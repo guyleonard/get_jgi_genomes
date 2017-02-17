@@ -17,4 +17,31 @@ Initially I will only focus on the Fungi portal (Mycocosm - although not, see No
 
 ## Notes
 
+### XML Layout
+
+Here is a rough layout of the XML document. I have shown the path to get to the predicted proteins for each project within the 'fungi' project.
+
+    - organismDownloads->name=fungi
+      |
+      + folder->name=Raw Data
+      |
+      + folder->name=Mycocosm
+      |
+      + folder->name=Files
+        |
+        + folders->names=(ESTs and EST Clusters, Additonal Files, Assembly)->folders...
+        |
+        + folder->name=Annotation
+          |
+          + folder->name=All models, Filtered and Not
+          |
+          + folder->name=Filtered Models ("best")
+            |
+            + folders
+            |
+            + folder->name=Proteins
+              |
+              + files->label,url,filename,size,timestamp,project,md5
+          
+        
 
