@@ -11,9 +11,17 @@ All three are web based methods and are slow and prone to connection time outs a
 
 **NB - Users should be aware that individual genome projects may have their own usage/licensing conditions - it is up to each user to make themselves aware of this before using the data. See [here](https://github.com/guyleonard/get_jgi_genomes/blob/master/data_usage_and_download_policy.md)**
 
-Initially I havel only focused on the 'fungi' portal (Mycocosm - although not, see JGI Quirks) and then will add in various other portals as needed, or on request.
+Currently I have only focused on the 'fungi' portal (not Mycocosm, see JGI Quirks), and the "Filtered Models ("best")" list (which is the full list) and then I will start to add in various other portal/options as needed, or on request.
 
 ## Usage
+    Usage:
+    Required:
+    	-u username
+    	-p password
+    	-g project (fungi, PhytozomeV11, MetazomeV3, ...)
+    Optional:
+    	-x xml file
+    get_jgi_genomes.pl -u username -p password -g fungi
 
 ## Notes
 
