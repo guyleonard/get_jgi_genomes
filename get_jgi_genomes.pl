@@ -66,11 +66,11 @@ sub signin {
     my $user = shift;
     my $pass = shift;
 
-    if ( -A "cookies" > 1 || ! -e "cookies") {
+    if ( -A "cookies" > 1 || !-e "cookies" ) {
         print "Logging In...\n";
         my $login =
 "curl 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null";
-		print "$login\n";
+        print "$login\n";
         system($login);
         print "Successfully Logged In!\n";
     }
@@ -84,7 +84,7 @@ sub signin {
 sub download_xml {
     my $portal = shift;
 
-    if ( ! -e "$portal\_files.xml" ) { #> 10 ) {
+    if ( !-e "$portal\_files.xml" ) {    #> 10 ) {
 
         # Get portal List
         print "Downloading $portal XML - This may take some time...\n";
@@ -130,8 +130,7 @@ sub parse_xml {
 
         foreach my $taxa (@cast) {
             my ( $file, $dir, $ext ) = fileparse( $taxa, '\.gz' );
-            my $download =
-"curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $file.$ext";
+            my $download = "curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $file.$ext";
 
             print "$download\n";
             system($download);
