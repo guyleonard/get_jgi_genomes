@@ -51,3 +51,9 @@ Here is a rough layout of the XML document. I have shown the path to get to the 
   * All models, Filtered and Not = 570, 566 unique
   * Filtered Models (best) = 1612, 757 unique
 
+ * Even when you do get a list of URLs to download, they include multiple filename types and data types :|
+  * GFF3 and FASTA
+  * \*.aa.fasta.gz 
+  * \*.proteins.fasta.gz
+  * project name
+  * organism name
