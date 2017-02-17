@@ -47,7 +47,7 @@ Here is a rough layout of the XML document. I have shown the path to get to the 
 
  * Although the portal is called "Mycocosm", this list only seems to contain the list of newly added fungi from [here](http://jgi.doe.gov/our-science/science-programs/fungal-genomics/recent-fungal-genome-releases/) and not the total content of the "fungi" portal which is contained in "Files". :|
  
- * The two lists: Filtered and All are not what you might initially think. :|
+ * The two lists: 'Filtered...' and 'All...' are not what you might initially think. :|
   * All models, Filtered and Not = 570, 566 unique
   * Filtered Models (best) = 1612, 757 unique
 
