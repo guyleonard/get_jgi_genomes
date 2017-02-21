@@ -45,6 +45,10 @@ if ( defined $options{o} && defined $options{g}) {
     print "Downloading XML from JGI Project: $project\n";
     download_xml($project);
 }
+else {
+    print "No Output Directory or Group Project ID\n";
+    exit(1);
+}
 
 # Parsing
 my $all_or_filtered = "Filtered Models \(best\)";
@@ -61,16 +65,6 @@ if ($options{l}) {
 else {
     parse_xml( $project, $all_or_filtered, $outdir, $list );
 }
-
-#}
-#else {
-#    print "No Project Option Given. Stopping. -g\n";
-#    exit(1);
-#}
-
-#else {
-#    display_help();
-#}
 
 sub display_help {
     print "Usage:\n";
