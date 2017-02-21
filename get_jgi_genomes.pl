@@ -5,6 +5,7 @@ use warnings;
 use Cwd;
 use Data::Dumper;
 use File::Basename;
+use File::Path qw(make_path);
 
 use Getopt::Std;
 
@@ -14,13 +15,14 @@ use XML::LibXML;
 # This is just a wrapper to make things easier...
 
 my %options = ();
-getopts( 'u:p:g:h', \%options ) or display_help();
+getopts( 'u:p:g:o:lh', \%options ) or display_help();
 
 if ( $options{h} ) { display_help(); }
 
-if ( defined $options{u} && defined $options{p} ) {
+if ( defined $options{u} && defined $options{p} && defined $options{o}) {
     my $username = "$options{u}";
     my $password = "$options{p}";
+    my $outdir  = "$options{o}";
     signin( $username, $password );
 
     if ( defined $options{g} ) {
@@ -33,7 +35,15 @@ if ( defined $options{u} && defined $options{p} ) {
         #my $all_or_filtered = "All models, Filtered and Not";
 
         print "Parsing XML\n";
-        parse_xml( $project, $all_or_filtered );
+        my $list = "false";
+        if ("$options{l}" eq 1) {
+            $list = "true";
+            print "\tOutput: List Only\n";
+            parse_xml( $project, $all_or_filtered, $outdir, $list );
+        }
+        else {
+            parse_xml( $project, $all_or_filtered, $outdir, $list );
+        }
     }
     else {
         print "No Project Option Given. Stopping. -g\n";
@@ -52,30 +62,27 @@ sub display_help {
     print "\t-g project (fungi, PhytozomeV11, MetazomeV3, ...)\n";
     print "Optional:\n";
     print "\t-x xml file\n";
-    print "get_jgi_genomes.pl -u username -p password ----\n";
+    print "get_jgi_genomes.pl -u username -p password -o outdir ---\n";
     exit(1);
 }
 
-# JGI Insist we log in, that's okay. You should be aware that different genome portals
-# may have different licenses etc...up to the individual user to be aware of them.
-# Let's login to the DOE JGI SSO
+# JGI insist we log in, that's okay. You should be aware that different genome portals
+# may have different licenses etc...it's up to the individual user to be aware of these.
+# So, let's login to the DOE JGI SSO
 # We can do this with curl and our username/password
-# This saves a cookie for use later, it will need refreshing.
+# This saves a cookie file for use later, it will need refreshing.
 sub signin {
 
     my $user = shift;
     my $pass = shift;
 
-    if ( -A "cookies" > 1 || !-e "cookies" ) {
+    if ( -A "cookies" > 1 || ! -e "cookies" ) {
         print "Logging In...\n";
-        my $login =
-"curl 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null";
-        print "$login\n";
-        system($login);
+        run_cmd("curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null");
         print "Successfully Logged In!\n";
     }
     else {
-        print "Skipping, should already be logged in\n";
+        print "Already logged in...\n";
     }
 }
 
@@ -88,17 +95,16 @@ sub download_xml {
 
         # Get portal List
         print "Downloading $portal XML - This may take some time...\n";
-        my $get_xml =
-"curl http://genome.jgi.doe.gov/ext-api/downloads/get-directory?organism=$portal -b cookies > $portal\_files.xml";
-        system($get_xml);
+        run_cmd("curl http://genome.jgi.doe.gov/ext-api/downloads/get-directory?organism=$portal -b cookies > $portal\_files.xml");
     }
     else {
-        print "$portal\_files.xml has not been modified in > 10 days, skipping download.\n";
+        print "\t$portal\_files.xml has not been modified in > 10 days, skipping download.\n";
     }
+    # I can't get the XML parsing to work when "&quot;" exists in the file
+    # let's cheat and remove it with sed?
 }
 
-# I can't get the XML parsing to work when "&quot;" exists in the file
-# let's cheat and remove it with sed?
+
 
 ## Parse the XML DOM
 sub parse_xml {
@@ -109,9 +115,17 @@ sub parse_xml {
 
     my $dom = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-    my $all_or_filtered = "Filtered Models \(best\)";
+    my $all_or_filtered = shift; #"Filtered Models \(best\)";
 
     #my $all_or_filtered = "All models, Filtered and Not";
+
+    my $outdir = shift;
+
+    my $list = shift;
+
+    if (! -d $outdir) {
+        make_path($outdir);
+    }
 
     foreach my $file (
         $dom->findnodes(
@@ -122,18 +136,65 @@ sub parse_xml {
       )
     {
         #print "\n" . $file->findnodes('./file/@label') . "\n";
-
         #my $cast = join "\n", map { $_->to_literal(); } $file->findnodes('./file/@url');
-        my @cast = map { $_->to_literal(); } $file->findnodes('./file/@url');
-
         #print "\n". $cast . "\n";
-
-        foreach my $taxa (@cast) {
-            my ( $file, $dir, $ext ) = fileparse( $taxa, '\.gz' );
-            my $download = "curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $file.$ext";
-
-            print "$download\n";
-            system($download);
+        if ( $list eq "true") {
+            my @list = map { $_->to_literal(); } $file->findnodes('./file/@label');
+            genome_list(\@list, $outdir, $portal);
+        }
+        else {
+            my @urls = map { $_->to_literal(); } $file->findnodes('./file/@url');
+            download_files(\@urls, $outdir);
         }
     }
+}
+
+sub genome_list {
+    my @list = @{$_[0]};;
+    my $outdir = $_[1];
+    my $portal = $_[2];
+
+    my %unique_list   = map { $_, 1 } @list;
+    my @unique = sort keys %unique_list;
+
+    my $filename = "$outdir\/$portal\_list.txt";
+    open my $fileout, '>', $filename;
+
+    foreach my $taxon (@unique) {
+        print $fileout "$taxon\n";
+    }
+    
+    close($fileout);
+}
+
+sub download_files {
+    my @urls = @{$_[0]};;
+    my $outdir = $_[1];
+
+    foreach my $taxa (@urls) {
+        my ( $file, $dir, $ext ) = fileparse( $taxa, '\.gz' );
+        if (-e "$outdir\/$file$ext") {
+            print "\t\tSkipping: $file Exists\n";
+        }
+        else {
+            print "\tRetrieving: $file\n";
+            run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/$file$ext");
+        }
+    }
+}
+
+
+sub run_cmd {
+    my($cmd, $quiet) = @_;
+    msg("Running: $cmd") unless $quiet;
+    system($cmd)==0 or error("Error $? running command");
+}
+
+sub error {
+    msg(@_);
+    exit(1);
+}
+
+sub msg {
+    print STDERR "@_\n";
 }
