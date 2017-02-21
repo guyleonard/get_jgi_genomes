@@ -14,55 +14,77 @@ use XML::LibXML;
 # Instructions are from here: http://genome.jgi.doe.gov/help/download.jsf#api
 # This is just a wrapper to make things easier...
 
-my %options = ();
-getopts( 'u:p:g:o:lh', \%options ) or display_help();
+my $cookies = 'cookies';
+my ($username, $password, $outdir, $project);
 
+my %options = ();
+getopts( 'u:p:c:g:o:lh', \%options ) or display_help();
+
+# Help
 if ( $options{h} ) { display_help(); }
 
-if ( defined $options{u} && defined $options{p} && defined $options{o}) {
-    my $username = "$options{u}";
-    my $password = "$options{p}";
-    my $outdir  = "$options{o}";
+# Signin Options / Cookies
+if ( defined $options{u} && defined $options{p} ) {
+    $username = "$options{u}";
+    $password = "$options{p}";
     signin( $username, $password );
-
-    if ( defined $options{g} ) {
-        my $project = "$options{g}";
-        print "Downloading XML\n";
-        download_xml($project);
-
-        my $all_or_filtered = "Filtered Models \(best\)";
-
-        #my $all_or_filtered = "All models, Filtered and Not";
-
-        print "Parsing XML\n";
-        my $list = "false";
-        if ("$options{l}" eq 1) {
-            $list = "true";
-            print "\tOutput: List Only\n";
-            parse_xml( $project, $all_or_filtered, $outdir, $list );
-        }
-        else {
-            parse_xml( $project, $all_or_filtered, $outdir, $list );
-        }
-    }
-    else {
-        print "No Project Option Given. Stopping. -g\n";
-        exit(1);
-    }
+}
+elsif ( defined $options{c} ) { 
+    $cookies = $options{c};
+    print "User supplied cookie, skipping signin process.\n";
 }
 else {
     display_help();
 }
+
+# Download Project XML & Output Dir
+if ( defined $options{o} && defined $options{g}) {
+    $outdir = "$options{o}";
+    $project = "$options{g}";
+
+    print "Downloading XML from JGI Project: $project\n";
+    download_xml($project);
+}
+
+# Parsing
+my $all_or_filtered = "Filtered Models \(best\)";
+
+#my $all_or_filtered = "All models, Filtered and Not";
+
+print "Parsing XML\n";
+my $list = "false";
+if ($options{l}) {
+    $list = "true";
+    print "\tOutput: List Only\n";
+    parse_xml( $project, $all_or_filtered, $outdir, $list );
+}
+else {
+    parse_xml( $project, $all_or_filtered, $outdir, $list );
+}
+
+#}
+#else {
+#    print "No Project Option Given. Stopping. -g\n";
+#    exit(1);
+#}
+
+#else {
+#    display_help();
+#}
 
 sub display_help {
     print "Usage:\n";
     print "Required:\n";
     print "\t-u username\n";
     print "\t-p password\n";
-    print "\t-g project (fungi, PhytozomeV11, MetazomeV3, ...)\n";
+    print "or\n";
+    print "-c cookie file\n";
+    print "\t-g project (fungi)\n";
     print "Optional:\n";
-    print "\t-x xml file\n";
-    print "get_jgi_genomes.pl -u username -p password -o outdir ---\n";
+    print "\t -l list only";
+    #print "\t-x xml file\n";
+    print "---\n";
+    print "get_jgi_genomes.pl [-u <username> -p <password>] | [-c <cookies>] -g <portal> -o <outdir> -l\n";
     exit(1);
 }
 
@@ -76,9 +98,11 @@ sub signin {
     my $user = shift;
     my $pass = shift;
 
-    if ( -A "cookies" > 1 || ! -e "cookies" ) {
+    if ( -A "cookies" > 1 || !-e "cookies" ) {
         print "Logging In...\n";
-        run_cmd("curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null");
+        run_cmd(
+"curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
+        );
         print "Successfully Logged In!\n";
     }
     else {
@@ -95,16 +119,17 @@ sub download_xml {
 
         # Get portal List
         print "Downloading $portal XML - This may take some time...\n";
-        run_cmd("curl http://genome.jgi.doe.gov/ext-api/downloads/get-directory?organism=$portal -b cookies > $portal\_files.xml");
+        run_cmd(
+"curl http://genome.jgi.doe.gov/ext-api/downloads/get-directory?organism=$portal -b $cookies > $portal\_files.xml"
+        );
     }
     else {
         print "\t$portal\_files.xml has not been modified in > 10 days, skipping download.\n";
     }
+
     # I can't get the XML parsing to work when "&quot;" exists in the file
     # let's cheat and remove it with sed?
 }
-
-
 
 ## Parse the XML DOM
 sub parse_xml {
@@ -115,7 +140,7 @@ sub parse_xml {
 
     my $dom = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-    my $all_or_filtered = shift; #"Filtered Models \(best\)";
+    my $all_or_filtered = shift;    #"Filtered Models \(best\)";
 
     #my $all_or_filtered = "All models, Filtered and Not";
 
@@ -123,7 +148,7 @@ sub parse_xml {
 
     my $list = shift;
 
-    if (! -d $outdir) {
+    if ( !-d $outdir ) {
         make_path($outdir);
     }
 
@@ -138,23 +163,23 @@ sub parse_xml {
         #print "\n" . $file->findnodes('./file/@label') . "\n";
         #my $cast = join "\n", map { $_->to_literal(); } $file->findnodes('./file/@url');
         #print "\n". $cast . "\n";
-        if ( $list eq "true") {
+        if ( $list eq "true" ) {
             my @list = map { $_->to_literal(); } $file->findnodes('./file/@label');
-            genome_list(\@list, $outdir, $portal);
+            genome_list( \@list, $outdir, $portal );
         }
         else {
             my @urls = map { $_->to_literal(); } $file->findnodes('./file/@url');
-            download_files(\@urls, $outdir);
+            download_files( \@urls, $outdir );
         }
     }
 }
 
 sub genome_list {
-    my @list = @{$_[0]};;
+    my @list   = @{ $_[0] };
     my $outdir = $_[1];
     my $portal = $_[2];
 
-    my %unique_list   = map { $_, 1 } @list;
+    my %unique_list = map { $_, 1 } @list;
     my @unique = sort keys %unique_list;
 
     my $filename = "$outdir\/$portal\_list.txt";
@@ -163,17 +188,17 @@ sub genome_list {
     foreach my $taxon (@unique) {
         print $fileout "$taxon\n";
     }
-    
+
     close($fileout);
 }
 
 sub download_files {
-    my @urls = @{$_[0]};;
+    my @urls   = @{ $_[0] };
     my $outdir = $_[1];
 
     foreach my $taxa (@urls) {
         my ( $file, $dir, $ext ) = fileparse( $taxa, '\.gz' );
-        if (-e "$outdir\/$file$ext") {
+        if ( -e "$outdir\/$file$ext" ) {
             print "\t\tSkipping: $file Exists\n";
         }
         else {
@@ -183,11 +208,10 @@ sub download_files {
     }
 }
 
-
 sub run_cmd {
-    my($cmd, $quiet) = @_;
+    my ( $cmd, $quiet ) = @_;
     msg("Running: $cmd") unless $quiet;
-    system($cmd)==0 or error("Error $? running command");
+    system($cmd) == 0 or error("Error $? running command");
 }
 
 sub error {
