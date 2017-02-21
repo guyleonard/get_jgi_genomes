@@ -7,22 +7,21 @@ JGI offers several ways to download its genomic data:
  
  3) GLOBUS - I am not going to even bother explaining this one as it would fill up most of this repo with bad vibes. GLOBUS not even once.
 
-All three are web based methods and are slow and prone to connection time outs and take time to scan for files and load the right interface etc etc. Luckily JGI also keep an XML document (by way of a rudimentary API) of all their projects with links to the download location of each file! This is good for us, XML is easily parseable!
+All three are web browser based methods (although GLOBUS may have a command line too) and are slo, prone to connection time outs and take some time to scan for files and load the right interface etc etc. Luckily JGI also keep a XML documents (by way of a rudimentary API) of all their projects with links to the download location of each file! This is good for us, XML is easily parseable!
 
 **NB - Users should be aware that individual genome projects may have their own usage/licensing conditions - it is up to each user to make themselves aware of this before using the data. See [here](https://github.com/guyleonard/get_jgi_genomes/blob/master/data_usage_and_download_policy.md)**
 
-Currently I have only focused on the 'fungi' portal (not Mycocosm, see JGI Quirks), and the "Filtered Models ("best")" list (which is the full list) and then I will start to add in various other portal/options as needed, or on request.
+Currently I have only focused on the 'fungi' portal (not Mycocosm, please see JGI Quirks for disambiguation), and the "Filtered Models ("best")" list (which is the full taxa list). I will start to add in various other portal/options as needed, or on request once the fungi download is satisfactorily complete.
 
 ## Usage
-    Usage:
+    Usage: get_jgi_genomes.pl -u username -p password -g fungi
     Required:
     	-u username
     	-p password
-    	-g project (fungi, PhytozomeV11, MetazomeV3, ...)
+    	-g project (fungi)
     Optional:
-    	-x xml file
-    get_jgi_genomes.pl -u username -p password -g fungi
-
+     -l print list of all taxa only
+     
 ## Notes
 
 ### XML Layout
