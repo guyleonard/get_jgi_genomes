@@ -7,27 +7,26 @@ JGI offers several ways to download its genomic data:
  
  3) GLOBUS - I am not going to even bother explaining this one as it would fill up most of this repo with bad vibes. GLOBUS not even once.
 
-All three are web based methods and are slow and prone to connection time outs and take time to scan for files and load the right interface etc etc. Luckily JGI also keep an XML document (by way of a rudimentary API) of all their projects with links to the download location of each file! This is good for us, XML is easily parseable!
+All three are web browser based methods (although GLOBUS may have a command line too) and are slo, prone to connection time outs and take some time to scan for files and load the right interface etc etc. Luckily JGI also keep a XML documents (by way of a rudimentary API) of all their projects with links to the download location of each file! This is good for us, XML is easily parseable!
 
 **NB - Users should be aware that individual genome projects may have their own usage/licensing conditions - it is up to each user to make themselves aware of this before using the data. See [here](https://github.com/guyleonard/get_jgi_genomes/blob/master/data_usage_and_download_policy.md)**
 
-Currently I have only focused on the 'fungi' portal (not Mycocosm, see JGI Quirks), and the "Filtered Models ("best")" list (which is the full list) and then I will start to add in various other portal/options as needed, or on request.
+Currently I have only focused on the 'fungi' portal (not Mycocosm, please see JGI Quirks for disambiguation), and the "Filtered Models ("best")" list (which is the full taxa list). I will start to add in various other portal/options as needed, or on request once the fungi download is satisfactorily complete.
 
 ## Usage
-    Usage:
+    Usage: get_jgi_genomes.pl -u username -p password -g fungi
     Required:
     	-u username
     	-p password
-    	-g project (fungi, PhytozomeV11, MetazomeV3, ...)
+    	-g project (fungi)
     Optional:
-    	-x xml file
-    get_jgi_genomes.pl -u username -p password -g fungi
-
+     -l print list of all taxa only
+     
 ## Notes
 
 ### XML Layout
 
-Here is a rough layout of the XML document. I have shown the path to get to the predicted proteins for each project within the 'fungi' project. You should now read the section JGI Quirks...
+Here is a rough layout of the 'fungi' XML document. I have shown the path to get to the predicted proteins for each project within the 'fungi' project. You should now read the section JGI Quirks...
 
     - organismDownloads->name=fungi
       |
@@ -53,7 +52,9 @@ Here is a rough layout of the XML document. I have shown the path to get to the 
               
 ### JGI Quirks :|
 
- * Although the portal is called "Mycocosm", this list only seems to contain the list of newly added fungi from [here](http://jgi.doe.gov/our-science/science-programs/fungal-genomics/recent-fungal-genome-releases/) and not the total content of the "fungi" portal which is contained in "Files". :|
+ * The XMLs for each portal are, of course, completely different. :|
+ 
+ * Although the fungal portal is called "Mycocosm", this list only seems to contain a list of newly added fungi from [here](http://jgi.doe.gov/our-science/science-programs/fungal-genomics/recent-fungal-genome-releases/) and not the total content of the "fungi" portal which is contained in "Files". :|
  
  * The two lists: 'Filtered...' and 'All...' are not what you might initially think. :|
   * All models, Filtered and Not = 570, 566 unique
