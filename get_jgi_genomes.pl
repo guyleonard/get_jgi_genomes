@@ -161,8 +161,13 @@ sub parse_xml {
         #my $cast = join "\n", map { $_->to_literal(); } $file->findnodes('./file/@url');
         #print "\n". $cast . "\n";
         if ( $list eq "true" ) {
+
+            # Here we get both the "label" which is the taxon name (e.g. Genus species strain version)
+            # and also the URLs - this is because I want to output the ID that JGI uses for projects
+            # and these are not one of the variables or regular, but do exist in the filepath
             my @list = map { $_->to_literal(); } $file->findnodes('./file/@label');
-            genome_list( \@list, $outdir, $portal );
+            my @urls = map { $_->to_literal(); } $file->findnodes('./file/@url');
+            genome_list( \@list, \@urls, $outdir, $portal );
         }
         else {
             my @urls = map { $_->to_literal(); } $file->findnodes('./file/@url');
@@ -172,18 +177,30 @@ sub parse_xml {
 }
 
 sub genome_list {
-    my @list   = @{ $_[0] };
-    my $outdir = $_[1];
-    my $portal = $_[2];
+    my @list = @{ $_[0] };
+    my @urls = @{ $_[1] };
 
-    my %unique_list = map { $_, 1 } @list;
-    my @unique = sort keys %unique_list;
+    my $outdir = $_[2];
+    my $portal = $_[3];
+
+    # create a hash of the same length arrays
+    # it doesn't matter that the hash will
+    # remove "duplicates" - where there are more
+    # than one file for each taxa - we only care
+    # about the taxon name...
+    my %hash;
+    @hash{@list} = @urls;
 
     my $filename = "$outdir\/$portal\_list.txt";
     open my $fileout, '>', $filename;
 
-    foreach my $taxon (@unique) {
-        print $fileout "$taxon\n";
+    foreach ( sort keys %hash ) {
+        my $taxa = $_;
+        my $url  = $hash{$_};
+
+        my @jgi_id = split /\//, $url;
+
+        print $fileout "$taxa\t$jgi_id[1]\n";
     }
 
     close($fileout);
@@ -195,8 +212,6 @@ sub download_files {
 
     foreach my $taxa (@urls) {
         my ( $file, $dir, $ext ) = fileparse( $taxa, '\.gz' );
-
-        #if ( -e "$outdir\/$file$ext" ) {
 
         my @file_match = File::Find::Rule->file()->name("$file$ext")->in("$outdir");
 
