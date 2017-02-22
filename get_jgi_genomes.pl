@@ -5,6 +5,7 @@ use warnings;
 use Cwd;
 use Data::Dumper;
 use File::Basename;
+use File::Find::Rule;
 use File::Path qw(make_path);
 
 use Getopt::Std;
@@ -15,7 +16,7 @@ use XML::LibXML;
 # This is just a wrapper to make things easier...
 
 my $cookies = 'cookies';
-my ($username, $password, $outdir, $project);
+my ( $username, $password, $outdir, $project );
 
 my %options = ();
 getopts( 'u:p:c:g:o:lh', \%options ) or display_help();
@@ -29,7 +30,7 @@ if ( defined $options{u} && defined $options{p} ) {
     $password = "$options{p}";
     signin( $username, $password );
 }
-elsif ( defined $options{c} ) { 
+elsif ( defined $options{c} ) {
     $cookies = $options{c};
     print "User supplied cookie, skipping signin process.\n";
 }
@@ -38,8 +39,8 @@ else {
 }
 
 # Download Project XML & Output Dir
-if ( defined $options{o} && defined $options{g}) {
-    $outdir = "$options{o}";
+if ( defined $options{o} && defined $options{g} ) {
+    $outdir  = "$options{o}";
     $project = "$options{g}";
 
     print "Downloading XML from JGI Project: $project\n";
@@ -57,7 +58,7 @@ my $all_or_filtered = "Filtered Models \(best\)";
 
 print "Parsing XML\n";
 my $list = "false";
-if ($options{l}) {
+if ( $options{l} ) {
     $list = "true";
     print "\tOutput: List Only\n";
     parse_xml( $project, $all_or_filtered, $outdir, $list );
@@ -68,17 +69,19 @@ else {
 
 sub display_help {
     print "Usage:\n";
+    print "  get_jgi_genomes.pl [-u <username> -p <password>] | [-c <cookies>] -g <portal> -o <outdir> (-l)\n\n";
     print "Required:\n";
-    print "\t-u username\n";
-    print "\t-p password\n";
+    print "  -u <username>\n";
+    print "  -p <password>\n";
     print "or\n";
-    print "-c cookie file\n";
-    print "\t-g project (fungi)\n";
-    print "Optional:\n";
-    print "\t -l list only";
-    #print "\t-x xml file\n";
+    print "  -c <cookie file>\n";
+    print "and\n";
+    print "  -g <project> (e.g. fungi)\n";
     print "---\n";
-    print "get_jgi_genomes.pl [-u <username> -p <password>] | [-c <cookies>] -g <portal> -o <outdir> -l\n";
+    print "Optional:\n";
+    print "  -l list individual projects only to file (no downloads)\n";
+
+    #print "\t-x xml file\n";
     exit(1);
 }
 
@@ -192,12 +195,28 @@ sub download_files {
 
     foreach my $taxa (@urls) {
         my ( $file, $dir, $ext ) = fileparse( $taxa, '\.gz' );
-        if ( -e "$outdir\/$file$ext" ) {
-            print "\t\tSkipping: $file Exists\n";
+
+        #if ( -e "$outdir\/$file$ext" ) {
+
+        my @file_match = File::Find::Rule->file()->name("$file$ext")->in("$outdir");
+
+        if ( grep( /$file$ext/, @file_match ) ) {
+            print "\t\tSkipping: $file$ext Exists\n";
         }
         else {
             print "\tRetrieving: $file\n";
-            run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/$file$ext");
+            if ( $file =~ /gff/igs ) {
+                run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/gff\/$file$ext");
+            }
+            elsif ( $file =~ /alleles/igs ) {
+                run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/alleles\/$file$ext");
+            }
+            elsif ( $file =~ /tab/igs ) {
+                run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/tab\/$file$ext");
+            }
+            else {
+                run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/fasta\/$file$ext");
+            }
         }
     }
 }
