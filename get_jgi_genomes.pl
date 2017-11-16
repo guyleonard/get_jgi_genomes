@@ -10,6 +10,8 @@ use File::Path qw(make_path);
 
 use Getopt::Std;
 
+use List::MoreUtils qw(uniq);
+
 use XML::LibXML;
 
 # Instructions are from here: http://genome.jgi.doe.gov/help/download.jsf#api
@@ -157,14 +159,11 @@ sub parse_xml {
         )
       )
     {
-        #print "\n" . $file->findnodes('./file/@label') . "\n";
-        #my $cast = join "\n", map { $_->to_literal(); } $file->findnodes('./file/@url');
-        #print "\n". $cast . "\n";
         if ( $list eq "true" ) {
 
             # Here we get both the "label" which is the taxon name (e.g. Genus species strain version)
             # and also the URLs - this is because I want to output the ID that JGI uses for projects
-            # and these are not one of the variables or regular, but do exist in the filepath
+            # and these are not one of the variables, but do exist in the filepath
             my @list = map { $_->to_literal(); } $file->findnodes('./file/@label');
             my @urls = map { $_->to_literal(); } $file->findnodes('./file/@url');
             genome_list( \@list, \@urls, $outdir, $portal );
@@ -180,6 +179,34 @@ sub genome_list {
     my @list = @{ $_[0] };
     my @urls = @{ $_[1] };
 
+    # make list uniq but preserve order
+    my @uniq_list = uniq(@list);
+
+    # filter out all gff3 and other entries
+    @urls = grep ! /gff3|ipr|go\.tab|kegg|kog|signalp|alleles|unsupported|primary|secondary|domain|old\_|diploid/i, @urls;
+    # some species have two, y'know just for fun...
+    # Capcor1,Capep1,Claps1,Claye1,Kurca1,Metro1,Pendig1,Pengri1,Penita1,Sodal1,Symat1,Trias8904
+    @urls = grep ! /Capcor1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Capep1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Claps1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Claye1\_GeneCatalog\_proteins\_20160828\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Kurca1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Metro1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Pendig1\_GeneCatalog\_proteins\_20170530\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Pengri1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Penita1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Sodal1\_GeneCatalog\_proteins\_20130716\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Symat1\_GeneCatalog\_proteins\_20150304\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Trias8904\_GeneCatalog\_proteins\_20170712\.aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /CocheC5\_1\_GeneModels\_FilteredModels1\_aa\.fasta\.gz/i, @urls;
+    @urls = grep ! /Copci\_AmutBmut1\_GeneModels\_FrozenGeneCatalog\_20160912\_aa\.fasta\.gz/, @urls;
+    @urls = grep ! /Mgraminicolav2\.FilteredModels1\.proteins\.fasta\.gz/, @urls;
+    @urls = grep ! /Pstipitisv2\.FilteredModels1\.proteins\.gz/, @urls;
+    @urls = grep ! /Pospl1\_FilteredModels2\_proteins\.fasta\.gz/, @urls;
+    @urls = grep ! /TreeseiV2\_FilteredModelsv2\.0\.proteins\.fasta\.gz/, @urls;
+    # remove Aciri1_meta for now
+    @urls = grep ! /Aciri1\_meta/i, @urls;
+
     my $outdir = $_[2];
     my $portal = $_[3];
 
@@ -189,7 +216,7 @@ sub genome_list {
     # than one file for each taxa - we only care
     # about the taxon name...
     my %hash;
-    @hash{@list} = @urls;
+    @hash{@uniq_list} = @urls;
 
     my $filename = "$outdir\/$portal\_list.txt";
     open my $fileout, '>', $filename;
@@ -199,8 +226,8 @@ sub genome_list {
         my $url  = $hash{$_};
 
         my @jgi_id = split /\//, $url;
-
-        print $fileout "$taxa\t$jgi_id[1]\n";
+        #print @jgi_id;
+        print $fileout "$taxa\t$jgi_id[1]\thttp://genome.jgi.doe.gov/$jgi_id[1]/download/$jgi_id[3]\n";
     }
 
     close($fileout);
