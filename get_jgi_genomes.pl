@@ -119,7 +119,7 @@ sub download_xml {
         # Get portal List
         print "Downloading $portal XML - This may take some time...\n";
         run_cmd(
-"curl http://genome.jgi.doe.gov/ext-api/downloads/get-directory?organism=$portal -b $cookies > $portal\_files.xml"
+"curl https://genome.jgi.doe.gov/ext-api/downloads/get-directory?organism=$portal -b $cookies > $portal\_files.xml"
         );
     }
     else {
@@ -232,6 +232,12 @@ sub genome_list {
 
     close($fileout);
 }
+
+# I can't seem to get curl to work sometimes
+# but
+# wget --load-cookies=cookies https://file.gz
+# works
+# also changed from http to https 
 
 sub download_files {
     my @urls   = @{ $_[0] };
