@@ -128,6 +128,7 @@ sub download_xml {
 
     # I can't get the XML parsing to work when "&quot;" exists in the file
     # let's cheat and remove it with sed?
+    run_cmd("sed -i \'s/&quot;//g\' $portal\_files.xml")
 }
 
 ## Parse the XML DOM
@@ -151,11 +152,12 @@ sub parse_xml {
         make_path($outdir);
     }
 
+    # the XML path changed somewhere between November 2017 and March 2018
     foreach my $file (
         $dom->findnodes(
-                '/organismDownloads/folder[@name="Files"]/folder/folder[@name="'
+                '/organismDownloads[@name="fungi"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="'
               . $all_or_filtered
-              . '"]/folder[@name="Proteins"]'
+              . '"]/folder[@name="Proteins"]/folder[@name="global"]/folder[@name="dna"]/folder[@name="projectdirs"]/folder[@name="fungal"]/folder[@name="mycocosm"]/folder[@name="portal"]/folder[@name="downloads"]/folder'
         )
       )
     {
@@ -205,7 +207,7 @@ sub genome_list {
     @urls = grep ! /Pospl1\_FilteredModels2\_proteins\.fasta\.gz/, @urls;
     @urls = grep ! /TreeseiV2\_FilteredModelsv2\.0\.proteins\.fasta\.gz/, @urls;
     # remove Aciri1_meta for now
-    @urls = grep ! /Aciri1\_meta/i, @urls;
+    #@urls = grep ! /Aciri1\_meta/i, @urls;
 
     my $outdir = $_[2];
     my $portal = $_[3];
@@ -219,7 +221,7 @@ sub genome_list {
     @hash{@uniq_list} = @urls;
 
     my $filename = "$outdir\/$portal\_list.txt";
-    open my $fileout, '>', $filename;
+    open my $fileout, '>>', $filename;
 
     foreach ( sort keys %hash ) {
         my $taxa = $_;
@@ -227,7 +229,11 @@ sub genome_list {
 
         my @jgi_id = split /\//, $url;
         #print @jgi_id;
-        print $fileout "$taxa\t$jgi_id[1]\thttp://genome.jgi.doe.gov/$jgi_id[1]/download/$jgi_id[3]\n";
+        # URL from XML
+        # global/dna/projectdirs/fungal/mycocosm/portal/downloads/Aaoar1/Aaoar1_GeneCatalog_proteins_20140429.aa.fasta.gz
+        # Actual JGI download URL
+        # https://genome.jgi.doe.gov/portal/Aaoar1/download/Aaoar1_GeneCatalog_proteins_20140429.aa.fasta.gz
+        print $fileout "$taxa\t$jgi_id[8]\thttps://genome.jgi.doe.gov/portal/$jgi_id[8]/download/$jgi_id[9]\n";
     }
 
     close($fileout);
@@ -243,8 +249,10 @@ sub download_files {
     my @urls   = @{ $_[0] };
     my $outdir = $_[1];
 
-    foreach my $taxa (@urls) {
-        my ( $file, $dir, $ext ) = fileparse( $taxa, '\.gz' );
+    foreach my $current (@urls) {
+        my ( $file, $dir, $ext ) = fileparse( $current, '\.gz' );
+        my @jgi_id = split /\//, $dir;
+        my $taxa = "$jgi_id[8]";
 
         my @file_match = File::Find::Rule->file()->name("$file$ext")->in("$outdir");
 
@@ -254,16 +262,16 @@ sub download_files {
         else {
             print "\tRetrieving: $file\n";
             if ( $file =~ /gff/igs ) {
-                run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/gff\/$file$ext");
+                run_cmd("curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/gff\/$file$ext");
             }
             elsif ( $file =~ /alleles/igs ) {
-                run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/alleles\/$file$ext");
+                run_cmd("curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/alleles\/$file$ext");
             }
             elsif ( $file =~ /tab/igs ) {
-                run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/tab\/$file$ext");
+                run_cmd("curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/tab\/$file$ext");
             }
             else {
-                run_cmd("curl --silent 'http://genome.jgi.doe.gov/$taxa' -b cookies > $outdir\/fasta\/$file$ext");
+                run_cmd("curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/fasta\/$file$ext");
             }
         }
     }
