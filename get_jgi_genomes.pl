@@ -100,7 +100,7 @@ sub signin {
     if ( -A "cookies" > 1 || !-e "cookies" ) {
         print "Logging In...\n";
         run_cmd(
-"curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
+"curl --silent 'https://signon-old.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
         );
         print "Successfully Logged In!\n";
     }
