@@ -1,8 +1,8 @@
-#
+# Get JGI Genomes!
 Download the available Amino Acid sequences from the genomes contained within JGI's various -zomes and -cosms.
 
 # Usage
-    Usage: get_jgi_genomes.pl -u username -p password -g name -o name
+    Usage: ./bin/get_jgi_genomes -u username -p password -g name -o name
     Required:
     	-u username
     	-p password
@@ -11,7 +11,7 @@ Download the available Amino Acid sequences from the genomes contained within JG
     Optional:
      -l print list of all taxa only
 
-# List of -zomes and -cosms
+## List of -zomes and -cosms
 
 * Phytozome V12 as 'PhytozomeV12'
 * Metazome V3 as 'MetazomeV3'
