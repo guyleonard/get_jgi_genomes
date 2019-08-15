@@ -12,10 +12,13 @@ Download the available Amino Acid sequences from the genomes contained within JG
      -l print list of all taxa only
 
 # List of -zomes and -cosms
+
 * PhytozomeV12
 * Metazomev3
 * Mycocosm
 * Phycocosm
+
+Point releases, e.g. V12.1, don't seem to work, so please use whole integers, e.g. V12
 
 # Notes (mostly grumpy)
 JGI offers several ways to download its genomic data:

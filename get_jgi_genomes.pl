@@ -108,7 +108,11 @@ sub signin {
     else {
         print "Logging In...\n";
         run_cmd(
+<<<<<<< HEAD
             "curl --silent 'https://signon-old.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
+=======
+"curl --silent 'https://signon-old.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
+>>>>>>> 67935b168670f3d993297f2b961c2505e2c4397e
         );
         print "Successfully Logged In!\n";
     }
