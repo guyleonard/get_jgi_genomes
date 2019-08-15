@@ -3,19 +3,14 @@ use strict;
 use warnings;
 
 use Cwd;
-use Data::Dumper;
 use File::Basename;
 use File::Find::Rule;
 use File::Path qw(make_path);
-
 use Getopt::Std;
-
 use List::MoreUtils qw(uniq);
-
 use XML::LibXML;
 
-# Instructions are from here: http://genome.jgi.doe.gov/help/download.jsf#api
-# This is just a wrapper to make things easier...
+use Data::Dumper;
 
 my $cookies = 'cookies';
 my ( $username, $password, $outdir, $project );
@@ -71,7 +66,8 @@ else {
 
 sub display_help {
     print "Usage:\n";
-    print "  get_jgi_genomes.pl [-u <username> -p <password>] | [-c <cookies>] -g <portal> -o <outdir> (-l)\n\n";
+    print
+        "  get_jgi_genomes.pl [-u <username> -p <password>] | [-c <cookies>] -g <portal> -o <outdir> (-l)\n\n";
     print "Required:\n";
     print "  -u <username>\n";
     print "  -p <password>\n";
@@ -97,15 +93,24 @@ sub signin {
     my $user = shift;
     my $pass = shift;
 
-    if ( -A "cookies" > 1 || !-e "cookies" ) {
-        print "Logging In...\n";
-        run_cmd(
-"curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
-        );
-        print "Successfully Logged In!\n";
+    if ( -e 'cookies' ) {
+        if ( -A 'cookies' > 1 ) {
+            print "Logging In Again...\n";
+            run_cmd(
+                "curl --silent 'https://signon-old.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
+            );
+            print "Successfully Logged In!\n";
+        }
+        else {
+            print "Already logged in...\n";
+        }
     }
     else {
-        print "Already logged in...\n";
+        print "Logging In...\n";
+        run_cmd(
+            "curl --silent 'https://signon-old.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
+        );
+        print "Successfully Logged In!\n";
     }
 }
 
@@ -119,16 +124,17 @@ sub download_xml {
         # Get portal List
         print "Downloading $portal XML - This may take some time...\n";
         run_cmd(
-"curl https://genome.jgi.doe.gov/ext-api/downloads/get-directory?organism=$portal -b $cookies > $portal\_files.xml"
+            "curl 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal' -b $cookies > $portal\_files.xml"
         );
     }
     else {
-        print "\t$portal\_files.xml has not been modified in > 10 days, skipping download.\n";
+        print
+            "\t$portal\_files.xml has not been modified in > 10 days, skipping download.\n";
     }
 
     # I can't get the XML parsing to work when "&quot;" exists in the file
     # let's cheat and remove it with sed?
-    run_cmd("sed -i \'s/&quot;//g\' $portal\_files.xml")
+    run_cmd("sed -i \'s/&quot;//g\' $portal\_files.xml");
 }
 
 ## Parse the XML DOM
@@ -155,23 +161,26 @@ sub parse_xml {
     # the XML path changed somewhere between November 2017 and March 2018
     foreach my $file (
         $dom->findnodes(
-                '/organismDownloads[@name="fungi"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="'
-              . $all_or_filtered
-              . '"]/folder[@name="Proteins"]/folder[@name="global"]/folder[@name="dna"]/folder[@name="projectdirs"]/folder[@name="fungal"]/folder[@name="mycocosm"]/folder[@name="portal"]/folder[@name="downloads"]/folder'
+            '/organismDownloads[@name="fungi"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="'
+                . $all_or_filtered
+                . '"]/folder[@name="Proteins"]/folder[@name="global"]/folder[@name="dna"]/folder[@name="projectdirs"]/folder[@name="fungal"]/folder[@name="mycocosm"]/folder[@name="portal"]/folder[@name="downloads"]/folder'
         )
-      )
+        )
     {
         if ( $list eq "true" ) {
 
-            # Here we get both the "label" which is the taxon name (e.g. Genus species strain version)
-            # and also the URLs - this is because I want to output the ID that JGI uses for projects
-            # and these are not one of the variables, but do exist in the filepath
-            my @list = map { $_->to_literal(); } $file->findnodes('./file/@label');
-            my @urls = map { $_->to_literal(); } $file->findnodes('./file/@url');
+# Here we get both the "label" which is the taxon name (e.g. Genus species strain version)
+# and also the URLs - this is because I want to output the ID that JGI uses for projects
+# and these are not one of the variables, but do exist in the filepath
+            my @list
+                = map { $_->to_literal(); } $file->findnodes('./file/@label');
+            my @urls
+                = map { $_->to_literal(); } $file->findnodes('./file/@url');
             genome_list( \@list, \@urls, $outdir, $portal );
         }
         else {
-            my @urls = map { $_->to_literal(); } $file->findnodes('./file/@url');
+            my @urls
+                = map { $_->to_literal(); } $file->findnodes('./file/@url');
             download_files( \@urls, $outdir );
         }
     }
@@ -185,27 +194,51 @@ sub genome_list {
     my @uniq_list = uniq(@list);
 
     # filter out all gff3 and other entries
-    @urls = grep ! /gff3|ipr|go\.tab|kegg|kog|signalp|alleles|unsupported|primary|secondary|domain|old\_|diploid/i, @urls;
-    # some species have two, y'know just for fun...
-    # Capcor1,Capep1,Claps1,Claye1,Kurca1,Metro1,Pendig1,Pengri1,Penita1,Sodal1,Symat1,Trias8904
-    @urls = grep ! /Capcor1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Capep1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Claps1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Claye1\_GeneCatalog\_proteins\_20160828\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Kurca1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Metro1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Pendig1\_GeneCatalog\_proteins\_20170530\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Pengri1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Penita1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Sodal1\_GeneCatalog\_proteins\_20130716\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Symat1\_GeneCatalog\_proteins\_20150304\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Trias8904\_GeneCatalog\_proteins\_20170712\.aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /CocheC5\_1\_GeneModels\_FilteredModels1\_aa\.fasta\.gz/i, @urls;
-    @urls = grep ! /Copci\_AmutBmut1\_GeneModels\_FrozenGeneCatalog\_20160912\_aa\.fasta\.gz/, @urls;
-    @urls = grep ! /Mgraminicolav2\.FilteredModels1\.proteins\.fasta\.gz/, @urls;
-    @urls = grep ! /Pstipitisv2\.FilteredModels1\.proteins\.gz/, @urls;
-    @urls = grep ! /Pospl1\_FilteredModels2\_proteins\.fasta\.gz/, @urls;
-    @urls = grep ! /TreeseiV2\_FilteredModelsv2\.0\.proteins\.fasta\.gz/, @urls;
+    @urls
+        = grep !
+        /gff3|ipr|go\.tab|kegg|kog|signalp|alleles|unsupported|primary|secondary|domain|old\_|diploid/i,
+        @urls;
+
+# some species have two, y'know just for fun...
+# Capcor1,Capep1,Claps1,Claye1,Kurca1,Metro1,Pendig1,Pengri1,Penita1,Sodal1,Symat1,Trias8904
+    @urls = grep !/Capcor1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Capep1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Claps1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Claye1\_GeneCatalog\_proteins\_20160828\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Kurca1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Metro1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Pendig1\_GeneCatalog\_proteins\_20170530\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Pengri1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Penita1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Sodal1\_GeneCatalog\_proteins\_20130716\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/Symat1\_GeneCatalog\_proteins\_20150304\.aa\.fasta\.gz/i,
+        @urls;
+    @urls
+        = grep !/Trias8904\_GeneCatalog\_proteins\_20170712\.aa\.fasta\.gz/i,
+        @urls;
+    @urls = grep !/CocheC5\_1\_GeneModels\_FilteredModels1\_aa\.fasta\.gz/i,
+        @urls;
+    @urls
+        = grep !
+        /Copci\_AmutBmut1\_GeneModels\_FrozenGeneCatalog\_20160912\_aa\.fasta\.gz/,
+        @urls;
+    @urls = grep !/Mgraminicolav2\.FilteredModels1\.proteins\.fasta\.gz/,
+        @urls;
+    @urls = grep !/Pstipitisv2\.FilteredModels1\.proteins\.gz/,   @urls;
+    @urls = grep !/Pospl1\_FilteredModels2\_proteins\.fasta\.gz/, @urls;
+    @urls = grep !/TreeseiV2\_FilteredModelsv2\.0\.proteins\.fasta\.gz/,
+        @urls;
+
     # remove Aciri1_meta for now
     #@urls = grep ! /Aciri1\_meta/i, @urls;
 
@@ -228,12 +261,14 @@ sub genome_list {
         my $url  = $hash{$_};
 
         my @jgi_id = split /\//, $url;
-        #print @jgi_id;
-        # URL from XML
-        # global/dna/projectdirs/fungal/mycocosm/portal/downloads/Aaoar1/Aaoar1_GeneCatalog_proteins_20140429.aa.fasta.gz
-        # Actual JGI download URL
-        # https://genome.jgi.doe.gov/portal/Aaoar1/download/Aaoar1_GeneCatalog_proteins_20140429.aa.fasta.gz
-        print $fileout "$taxa\t$jgi_id[8]\thttps://genome.jgi.doe.gov/portal/$jgi_id[8]/download/$jgi_id[9]\n";
+
+#print @jgi_id;
+# URL from XML
+# global/dna/projectdirs/fungal/mycocosm/portal/downloads/Aaoar1/Aaoar1_GeneCatalog_proteins_20140429.aa.fasta.gz
+# Actual JGI download URL
+# https://genome.jgi.doe.gov/portal/Aaoar1/download/Aaoar1_GeneCatalog_proteins_20140429.aa.fasta.gz
+        print $fileout
+            "$taxa\t$jgi_id[8]\thttps://genome.jgi.doe.gov/portal/$jgi_id[8]/download/$jgi_id[9]\n";
     }
 
     close($fileout);
@@ -243,7 +278,7 @@ sub genome_list {
 # but
 # wget --load-cookies=cookies https://file.gz
 # works
-# also changed from http to https 
+# also changed from http to https
 
 sub download_files {
     my @urls   = @{ $_[0] };
@@ -254,7 +289,8 @@ sub download_files {
         my @jgi_id = split /\//, $dir;
         my $taxa = "$jgi_id[8]";
 
-        my @file_match = File::Find::Rule->file()->name("$file$ext")->in("$outdir");
+        my @file_match
+            = File::Find::Rule->file()->name("$file$ext")->in("$outdir");
 
         if ( grep( /$file$ext/, @file_match ) ) {
             print "\t\tSkipping: $file$ext Exists\n";
@@ -262,16 +298,24 @@ sub download_files {
         else {
             print "\tRetrieving: $file\n";
             if ( $file =~ /gff/igs ) {
-                run_cmd("curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/gff\/$file$ext");
+                run_cmd(
+                    "curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/gff\/$file$ext"
+                );
             }
             elsif ( $file =~ /alleles/igs ) {
-                run_cmd("curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/alleles\/$file$ext");
+                run_cmd(
+                    "curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/alleles\/$file$ext"
+                );
             }
             elsif ( $file =~ /tab/igs ) {
-                run_cmd("curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/tab\/$file$ext");
+                run_cmd(
+                    "curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/tab\/$file$ext"
+                );
             }
             else {
-                run_cmd("curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/fasta\/$file$ext");
+                run_cmd(
+                    "curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/fasta\/$file$ext"
+                );
             }
         }
     }
