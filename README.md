@@ -13,12 +13,12 @@ Download the available Amino Acid sequences from the genomes contained within JG
 
 # List of -zomes and -cosms
 
-* PhytozomeV12
-* Metazomev3
-* Mycocosm
-* Phycocosm
+* Phytozome V12 as 'PhytozomeV12'
+* Metazome V3 as 'MetazomeV3'
+* Mycocosm as 'fungi'
+* Phycocosm as 'algae'
 
-Point releases, e.g. V12.1, don't seem to work, so please use whole integers, e.g. V12
+Use the name in quotes for the '-g' option. NB - point releases, e.g. V12.1, don't seem to work, so please use whole integers, e.g. V12
 
 # Notes (mostly grumpy)
 JGI offers several ways to download its genomic data:
