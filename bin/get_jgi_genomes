@@ -180,60 +180,61 @@ sub parse_xml {
 }
 
 sub genome_list {
-    my @list = @{ $_[0] };
-    my @urls = @{ $_[1] };
+    my @list   = @{ $_[0] };
+    my @urls   = @{ $_[1] };
+    my $outdir = $_[2];
+    my $portal = $_[3];
 
     # make list uniq but preserve order
     my @uniq_list = uniq(@list);
 
-    # filter out all gff3 and other entries
-    @urls
-        = grep !
-        /gff3|ipr|go\.tab|kegg|kog|signalp|alleles|unsupported|primary|secondary|domain|old\_|diploid/i,
-        @urls;
+# filter out all gff3 and other entries
+#@urls
+#    = grep !
+#    /gff3|ipr|go\.tab|kegg|kog|signalp|alleles|unsupported|primary|secondary|domain|old\_|diploid/i,
+#    @urls;
+
+    @urls = grep /proteins\.fasta\.gz|aa\.fasta\.gz/i, @urls;
 
 # some species have two, y'know just for fun...
 # Capcor1,Capep1,Claps1,Claye1,Kurca1,Metro1,Pendig1,Pengri1,Penita1,Sodal1,Symat1,Trias8904
-    # @urls = grep !/Capcor1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Capep1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Claps1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Claye1\_GeneCatalog\_proteins\_20160828\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Kurca1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Metro1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Pendig1\_GeneCatalog\_proteins\_20170530\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Pengri1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Penita1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Sodal1\_GeneCatalog\_proteins\_20130716\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/Symat1\_GeneCatalog\_proteins\_20150304\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls
-    #     = grep !/Trias8904\_GeneCatalog\_proteins\_20170712\.aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls = grep !/CocheC5\_1\_GeneModels\_FilteredModels1\_aa\.fasta\.gz/i,
-    #     @urls;
-    # @urls
-    #     = grep !
-    #     /Copci\_AmutBmut1\_GeneModels\_FrozenGeneCatalog\_20160912\_aa\.fasta\.gz/,
-    #     @urls;
-    # @urls = grep !/Mgraminicolav2\.FilteredModels1\.proteins\.fasta\.gz/,
-    #     @urls;
-    # @urls = grep !/Pstipitisv2\.FilteredModels1\.proteins\.gz/,   @urls;
-    # @urls = grep !/Pospl1\_FilteredModels2\_proteins\.fasta\.gz/, @urls;
-    # @urls = grep !/TreeseiV2\_FilteredModelsv2\.0\.proteins\.fasta\.gz/,
-    #     @urls;
-
-    my $outdir = $_[2];
-    my $portal = $_[3];
+# @urls = grep !/Capcor1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Capep1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Claps1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Claye1\_GeneCatalog\_proteins\_20160828\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Kurca1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Metro1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Pendig1\_GeneCatalog\_proteins\_20170530\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Pengri1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Penita1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Sodal1\_GeneCatalog\_proteins\_20130716\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/Symat1\_GeneCatalog\_proteins\_20150304\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls
+#     = grep !/Trias8904\_GeneCatalog\_proteins\_20170712\.aa\.fasta\.gz/i,
+#     @urls;
+# @urls = grep !/CocheC5\_1\_GeneModels\_FilteredModels1\_aa\.fasta\.gz/i,
+#     @urls;
+# @urls
+#     = grep !
+#     /Copci\_AmutBmut1\_GeneModels\_FrozenGeneCatalog\_20160912\_aa\.fasta\.gz/,
+#     @urls;
+# @urls = grep !/Mgraminicolav2\.FilteredModels1\.proteins\.fasta\.gz/,
+#     @urls;
+# @urls = grep !/Pstipitisv2\.FilteredModels1\.proteins\.gz/,   @urls;
+# @urls = grep !/Pospl1\_FilteredModels2\_proteins\.fasta\.gz/, @urls;
+# @urls = grep !/TreeseiV2\_FilteredModelsv2\.0\.proteins\.fasta\.gz/,
+#     @urls;
 
     # create a hash of the same length arrays
     # it doesn't matter that the hash will
@@ -247,18 +248,16 @@ sub genome_list {
     open my $fileout, '>>', $filename;
 
     foreach ( sort keys %hash ) {
-        my $taxa = $_;
-        my $url  = $hash{$_};
-
+        my $taxa   = $_;
+        my $url    = $hash{$_};
         my @jgi_id = split /\//, $url;
 
-#print @jgi_id;
 # URL from XML
-# global/dna/projectdirs/fungal/mycocosm/portal/downloads/Aaoar1/Aaoar1_GeneCatalog_proteins_20140429.aa.fasta.gz
+# portal/Zymps1/download/Zymps1_GeneCatalog_proteins_20141012.aa.fasta.gz
 # Actual JGI download URL
 # https://genome.jgi.doe.gov/portal/Aaoar1/download/Aaoar1_GeneCatalog_proteins_20140429.aa.fasta.gz
         print $fileout
-            "$taxa\t$jgi_id[8]\thttps://genome.jgi.doe.gov/portal/$jgi_id[8]/download/$jgi_id[9]\n";
+            "$taxa\t$jgi_id[2]\thttps://genome.jgi.doe.gov/portal/$jgi_id[2]/download/$jgi_id[4]\n";
     }
 
     close($fileout);
