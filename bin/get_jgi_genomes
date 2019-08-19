@@ -4,7 +4,6 @@ use warnings;
 
 use Cwd;
 use File::Basename;
-use File::Find::Rule;
 use File::Path qw(make_path);
 use Getopt::Std;
 use List::MoreUtils qw(uniq);
@@ -184,10 +183,10 @@ sub parse_xml {
         genome_list( \%results, $outdir, $portal );
     }
 
-    #     else {
-    #         #download_files( \@urls, $outdir );
-    #     }
-    #}
+    else {
+        download_files( \%results, $outdir );
+    }
+
 }
 
 sub genome_list {
@@ -203,10 +202,6 @@ sub genome_list {
         my $url    = $list_of_urls{$_};
         my @jgi_id = split /\//, $url;
 
-# URL from XML
-# portal/Zymps1/download/Zymps1_GeneCatalog_proteins_20141012.aa.fasta.gz
-# Actual JGI download URL
-# https://genome.jgi.doe.gov/portal/Aaoar1/download/Aaoar1_GeneCatalog_proteins_20140429.aa.fasta.gz
         print $fileout
             "$taxa\t$jgi_id[2]\thttps://genome.jgi.doe.gov/portal/$jgi_id[2]/download/$jgi_id[4]\n";
     }
@@ -215,43 +210,19 @@ sub genome_list {
 }
 
 sub download_files {
-    my @urls   = @{ $_[0] };
-    my $outdir = $_[1];
+    my %list_of_urls = %{ $_[0] };
+    my $outdir       = $_[1];
 
-    foreach my $current (@urls) {
-        my ( $file, $dir, $ext ) = fileparse( $current, '\.gz' );
-        my @jgi_id = split /\//, $dir;
-        my $taxa = "$jgi_id[2]";
+    foreach ( sort keys %list_of_urls ) {
+        my $taxa   = $_;
+        my $url    = $list_of_urls{$_};
+        my @jgi_id = split /\//, $url;
 
-        my @file_match
-            = File::Find::Rule->file()->name("$file$ext")->in("$outdir");
+        print "\tRetrieving: $jgi_id[4]\n";
 
-        if ( grep( /$file$ext/, @file_match ) ) {
-            print "\t\tSkipping: $file$ext Exists\n";
-        }
-        else {
-            print "\tRetrieving: $file\n";
-            if ( $file =~ /gff/igs ) {
-                run_cmd(
-                    "curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/gff\/$file$ext"
-                );
-            }
-            elsif ( $file =~ /alleles/igs ) {
-                run_cmd(
-                    "curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/alleles\/$file$ext"
-                );
-            }
-            elsif ( $file =~ /tab/igs ) {
-                run_cmd(
-                    "curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/tab\/$file$ext"
-                );
-            }
-            else {
-                run_cmd(
-                    "curl --silent 'https://genome.jgi.doe.gov/portal/$taxa/download/$file$ext' -b cookies > $outdir\/fasta\/$file$ext"
-                );
-            }
-        }
+        run_cmd(
+            "curl --silent 'https://genome.jgi.doe.gov/portal/$jgi_id[2]/download/$jgi_id[4]' -b cookies > $outdir\/$jgi_id[4]"
+        );
     }
 }
 
