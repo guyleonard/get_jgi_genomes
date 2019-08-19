@@ -140,47 +140,40 @@ sub download_xml {
 ## Parse the XML DOM
 sub parse_xml {
 
-    my $portal = shift;
+    my ( $portal, $all_or_filtered, $outdir, $list ) = @_;
 
     my $xml_file = "$portal\_files.xml";
 
     my $dom = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-    my $all_or_filtered = shift;    #"Filtered Models \(best\)";
-
     #my $all_or_filtered = "All models, Filtered and Not";
-
-    my $outdir = shift;
-
-    my $list = shift;
 
     if ( !-d $outdir ) {
         make_path($outdir);
     }
 
-    # the XML path changed somewhere between November 2017 and March 2018
-    foreach my $file (
+    foreach my $node (
         $dom->findnodes(
             '/organismDownloads[@name="fungi"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="'
                 . $all_or_filtered
-                . '"]/folder[@name="Proteins"]/folder[@name="global"]/folder[@name="dna"]/folder[@name="projectdirs"]/folder[@name="fungal"]/folder[@name="mycocosm"]/folder[@name="portal"]/folder[@name="downloads"]/folder'
+                . '"]/folder[@name="Proteins"]'
         )
+
         )
     {
         if ( $list eq "true" ) {
-
-# Here we get both the "label" which is the taxon name (e.g. Genus species strain version)
-# and also the URLs - this is because I want to output the ID that JGI uses for projects
-# and these are not one of the variables, but do exist in the filepath
             my @list
-                = map { $_->to_literal(); } $file->findnodes('./file/@label');
+                = map { $_->to_literal(); } $node->findnodes('./file/@label');
+
             my @urls
-                = map { $_->to_literal(); } $file->findnodes('./file/@url');
+                = map { $_->to_literal(); } $node->findnodes('./file/@url');
+
             genome_list( \@list, \@urls, $outdir, $portal );
         }
         else {
             my @urls
-                = map { $_->to_literal(); } $file->findnodes('./file/@url');
+                = map { $_->to_literal(); } $node->findnodes('./file/@url');
+
             download_files( \@urls, $outdir );
         }
     }
@@ -201,46 +194,43 @@ sub genome_list {
 
 # some species have two, y'know just for fun...
 # Capcor1,Capep1,Claps1,Claye1,Kurca1,Metro1,Pendig1,Pengri1,Penita1,Sodal1,Symat1,Trias8904
-    @urls = grep !/Capcor1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Capep1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Claps1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Claye1\_GeneCatalog\_proteins\_20160828\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Kurca1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Metro1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Pendig1\_GeneCatalog\_proteins\_20170530\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Pengri1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Penita1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Sodal1\_GeneCatalog\_proteins\_20130716\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/Symat1\_GeneCatalog\_proteins\_20150304\.aa\.fasta\.gz/i,
-        @urls;
-    @urls
-        = grep !/Trias8904\_GeneCatalog\_proteins\_20170712\.aa\.fasta\.gz/i,
-        @urls;
-    @urls = grep !/CocheC5\_1\_GeneModels\_FilteredModels1\_aa\.fasta\.gz/i,
-        @urls;
-    @urls
-        = grep !
-        /Copci\_AmutBmut1\_GeneModels\_FrozenGeneCatalog\_20160912\_aa\.fasta\.gz/,
-        @urls;
-    @urls = grep !/Mgraminicolav2\.FilteredModels1\.proteins\.fasta\.gz/,
-        @urls;
-    @urls = grep !/Pstipitisv2\.FilteredModels1\.proteins\.gz/,   @urls;
-    @urls = grep !/Pospl1\_FilteredModels2\_proteins\.fasta\.gz/, @urls;
-    @urls = grep !/TreeseiV2\_FilteredModelsv2\.0\.proteins\.fasta\.gz/,
-        @urls;
-
-    # remove Aciri1_meta for now
-    #@urls = grep ! /Aciri1\_meta/i, @urls;
+    # @urls = grep !/Capcor1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Capep1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Claps1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Claye1\_GeneCatalog\_proteins\_20160828\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Kurca1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Metro1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Pendig1\_GeneCatalog\_proteins\_20170530\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Pengri1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Penita1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Sodal1\_GeneCatalog\_proteins\_20130716\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/Symat1\_GeneCatalog\_proteins\_20150304\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls
+    #     = grep !/Trias8904\_GeneCatalog\_proteins\_20170712\.aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls = grep !/CocheC5\_1\_GeneModels\_FilteredModels1\_aa\.fasta\.gz/i,
+    #     @urls;
+    # @urls
+    #     = grep !
+    #     /Copci\_AmutBmut1\_GeneModels\_FrozenGeneCatalog\_20160912\_aa\.fasta\.gz/,
+    #     @urls;
+    # @urls = grep !/Mgraminicolav2\.FilteredModels1\.proteins\.fasta\.gz/,
+    #     @urls;
+    # @urls = grep !/Pstipitisv2\.FilteredModels1\.proteins\.gz/,   @urls;
+    # @urls = grep !/Pospl1\_FilteredModels2\_proteins\.fasta\.gz/, @urls;
+    # @urls = grep !/TreeseiV2\_FilteredModelsv2\.0\.proteins\.fasta\.gz/,
+    #     @urls;
 
     my $outdir = $_[2];
     my $portal = $_[3];
