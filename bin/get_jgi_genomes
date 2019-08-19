@@ -13,11 +13,12 @@ use XML::LibXML;
 
 use Data::Dumper;
 
+my $list    = "false";
 my $cookies = 'cookies';
 my ( $username, $password, $outdir, $project );
 
 my %options = ();
-getopts( 'u:p:c:g:o:lh', \%options ) or display_help();
+getopts( 'u:p:c:g:o:fam:P:lh', \%options ) or display_help();
 
 # Help
 if ( $options{h} ) { display_help(); }
@@ -36,46 +37,69 @@ else {
     display_help();
 }
 
-# Download Project XML & Output Dir
-if ( defined $options{o} && defined $options{g} ) {
-    $outdir  = "$options{o}";
-    $project = "$options{g}";
+if ( $options{l} ) {
+    $list = "true";
+    print "\tOutput: List Only\n";
+}
 
-    print "Downloading XML from JGI Project: $project\n";
+# Download Project XML & Output Dir
+if ( defined $options{o} && defined $options{f} ) {
+    $outdir  = "$options{o}";
+    $project = 'fungi';
+
+    print "Downloading XML from JGI -cosm Project: Mycocosm aka $project\n";
     download_xml($project);
+    print "Parsing XML\n";
+    parse_cosm_xml( $project, $outdir, $list );
+}
+elsif ( defined $options{o} && defined $options{a} ) {
+    $outdir  = "$options{o}";
+    $project = 'algae';
+
+    print "Downloading XML from JGI -cosm Project: Phycocosm aka $project\n";
+    download_xml($project);
+    print "Parsing XML\n";
+    parse_cosm_xml( $project, $outdir, $list );
+}
+elsif ( defined $options{o} && defined $options{P} ) {
+    $outdir  = "$options{o}";
+    $project = 'PhytozomeV' . "$options{P}";
+
+    print "Downloading XML from JGI -zome Project: $project\n";
+    download_xml($project);
+    print "Parsing XML\n";
+    parse_zome_xml( $project, $outdir, $list );
+}
+elsif ( defined $options{o} && defined $options{m} ) {
+    $outdir  = "$options{o}";
+    $project = 'MetazomeV' . "$options{m}";
+
+    print "Downloading XML from JGI -zome Project: $project\n";
+    download_xml($project);
+    print "Parsing XML\n";
+    parse_zome_xml( $project, $outdir, $list );
 }
 else {
     print "No Output Directory or Group Project ID\n";
     exit(1);
 }
 
-print "Parsing XML\n";
-my $list = "false";
-if ( $options{l} ) {
-    $list = "true";
-    print "\tOutput: List Only\n";
-    parse_xml( $project, $outdir, $list );
-}
-else {
-    parse_xml( $project, $outdir, $list );
-}
-
 sub display_help {
     print "Usage:\n";
     print
-        "  get_jgi_genomes.pl [-u <username> -p <password>] | [-c <cookies>] -g <portal> -o <outdir> (-l)\n\n";
+        "  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] -o <outdir> (-l)\n\n";
     print "Required:\n";
-    print "  -u <username>\n";
-    print "  -p <password>\n";
+    print "\t-u <username>\n";
+    print "\t-p <password>\n";
     print "or\n";
-    print "  -c <cookie file>\n";
-    print "and\n";
-    print "  -g <project> (e.g. fungi)\n";
-    print "---\n";
+    print "\t-c <cookie file>\n";
     print "Optional:\n";
-    print "  -l list individual projects only to file (no downloads)\n";
+    print "\t-f Mycocosm aka fungi\n";
+    print "\t-a Phycocosm aka algae\n";
+    print "\t-P <version> PhytozomeV\n";
+    print "\t-m <metazome> MetazomeV\n";
+    print "\t-l list only, no downloads\n";
 
-    #print "\t-x xml file\n";
     exit(1);
 }
 
@@ -133,8 +157,11 @@ sub download_xml {
     run_cmd("sed -i \'s/&quot;//g\' $portal\_files.xml");
 }
 
+sub parse_zome_xml {
+}
+
 ## Parse the XML DOM
-sub parse_xml {
+sub parse_cosm_xml {
 
     my ( $portal, $outdir, $list ) = @_;
 
@@ -144,7 +171,9 @@ sub parse_xml {
         = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
     my $query
-        = '/organismDownloads[@name="fungi"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="Filtered Models (best)"]/folder[@name="Proteins"]';
+        = '/organismDownloads[@name="'
+        . $portal
+        . '"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="Filtered Models (best)"]/folder[@name="Proteins"]';
 
     my %results;
 
