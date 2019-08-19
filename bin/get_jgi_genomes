@@ -48,20 +48,15 @@ else {
     exit(1);
 }
 
-# Parsing
-my $all_or_filtered = "Filtered Models \(best\)";
-
-#my $all_or_filtered = "All models, Filtered and Not";
-
 print "Parsing XML\n";
 my $list = "false";
 if ( $options{l} ) {
     $list = "true";
     print "\tOutput: List Only\n";
-    parse_xml( $project, $all_or_filtered, $outdir, $list );
+    parse_xml( $project, $outdir, $list );
 }
 else {
-    parse_xml( $project, $all_or_filtered, $outdir, $list );
+    parse_xml( $project, $outdir, $list );
 }
 
 sub display_help {
@@ -140,116 +135,72 @@ sub download_xml {
 ## Parse the XML DOM
 sub parse_xml {
 
-    my ( $portal, $all_or_filtered, $outdir, $list ) = @_;
+    my ( $portal, $outdir, $list ) = @_;
 
     my $xml_file = "$portal\_files.xml";
 
-    my $dom = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
+    my $portal_xml
+        = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-    #my $all_or_filtered = "All models, Filtered and Not";
+    my $query
+        = '/organismDownloads[@name="fungi"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="Filtered Models (best)"]/folder[@name="Proteins"]';
+
+    my %results;
+
+    for my $file ( $portal_xml->findnodes($query) ) {
+        for my $file_props ( $file->findnodes('./*') ) {
+
+            my $label = $file_props->getAttribute('label');
+            my $url   = $file_props->getAttribute('url');
+
+            # if the files don't look like this, then we don't want them
+            # Armlut1_GeneCatalog_proteins_20180531.aa.fasta.gz
+            # *proteins.fasta.gz
+            # we also remove any files with some modifiers
+            # then push them to a hash to remove genomes with two sets
+            # of proteins.
+            # it's a bit of a fudge, but the xml makes no effort to define
+            # the set of AAs that are representative of the genome
+
+            if ( $url =~ m/.*\_GeneCatalog_proteins_\d+\.aa\.fasta.gz/ ) {
+                if ( $url !~ m/primary|secondary|alleles|diploid|old/ ) {
+                    $results{"$label"} = "$url";
+                }
+            }
+            elsif ( $url =~ m/.*proteins\.fasta\.gz/ ) {
+                $results{"$label"} = "$url";
+            }
+        }
+    }
 
     if ( !-d $outdir ) {
         make_path($outdir);
     }
 
-    foreach my $node (
-        $dom->findnodes(
-            '/organismDownloads[@name="fungi"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="'
-                . $all_or_filtered
-                . '"]/folder[@name="Proteins"]'
-        )
+    if ( $list eq "true" ) {
 
-        )
-    {
-        if ( $list eq "true" ) {
-            my @list
-                = map { $_->to_literal(); } $node->findnodes('./file/@label');
-
-            my @urls
-                = map { $_->to_literal(); } $node->findnodes('./file/@url');
-
-            genome_list( \@list, \@urls, $outdir, $portal );
-        }
-        else {
-            my @urls
-                = map { $_->to_literal(); } $node->findnodes('./file/@url');
-
-            download_files( \@urls, $outdir );
-        }
+        genome_list( \%results, $outdir, $portal );
     }
+
+    #     else {
+    #         #download_files( \@urls, $outdir );
+    #     }
+    #}
 }
 
 sub genome_list {
-    my @list   = @{ $_[0] };
-    my @urls   = @{ $_[1] };
-    my $outdir = $_[2];
-    my $portal = $_[3];
+    my %list_of_urls = %{ $_[0] };
+    my $outdir       = $_[1];
+    my $portal       = $_[2];
 
-    # make list uniq but preserve order
-    my @uniq_list = uniq(@list);
-
-# filter out all gff3 and other entries
-#@urls
-#    = grep !
-#    /gff3|ipr|go\.tab|kegg|kog|signalp|alleles|unsupported|primary|secondary|domain|old\_|diploid/i,
-#    @urls;
-
-    @urls = grep /proteins\.fasta\.gz|aa\.fasta\.gz/i, @urls;
-
-# some species have two, y'know just for fun...
-# Capcor1,Capep1,Claps1,Claye1,Kurca1,Metro1,Pendig1,Pengri1,Penita1,Sodal1,Symat1,Trias8904
-# @urls = grep !/Capcor1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Capep1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Claps1\_GeneCatalog\_proteins\_20160826\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Claye1\_GeneCatalog\_proteins\_20160828\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Kurca1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Metro1\_GeneCatalog\_proteins\_20160603\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Pendig1\_GeneCatalog\_proteins\_20170530\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Pengri1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Penita1\_GeneCatalog\_proteins\_20170529\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Sodal1\_GeneCatalog\_proteins\_20130716\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/Symat1\_GeneCatalog\_proteins\_20150304\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls
-#     = grep !/Trias8904\_GeneCatalog\_proteins\_20170712\.aa\.fasta\.gz/i,
-#     @urls;
-# @urls = grep !/CocheC5\_1\_GeneModels\_FilteredModels1\_aa\.fasta\.gz/i,
-#     @urls;
-# @urls
-#     = grep !
-#     /Copci\_AmutBmut1\_GeneModels\_FrozenGeneCatalog\_20160912\_aa\.fasta\.gz/,
-#     @urls;
-# @urls = grep !/Mgraminicolav2\.FilteredModels1\.proteins\.fasta\.gz/,
-#     @urls;
-# @urls = grep !/Pstipitisv2\.FilteredModels1\.proteins\.gz/,   @urls;
-# @urls = grep !/Pospl1\_FilteredModels2\_proteins\.fasta\.gz/, @urls;
-# @urls = grep !/TreeseiV2\_FilteredModelsv2\.0\.proteins\.fasta\.gz/,
-#     @urls;
-
-    # create a hash of the same length arrays
-    # it doesn't matter that the hash will
-    # remove "duplicates" - where there are more
-    # than one file for each taxa - we only care
-    # about the taxon name...
-    my %hash;
-    @hash{@uniq_list} = @urls;
+    print Dumper %list_of_urls;
 
     my $filename = "$outdir\/$portal\_list.txt";
     open my $fileout, '>>', $filename;
 
-    foreach ( sort keys %hash ) {
+    foreach ( sort keys %list_of_urls ) {
         my $taxa   = $_;
-        my $url    = $hash{$_};
+        my $url    = $list_of_urls{$_};
         my @jgi_id = split /\//, $url;
 
 # URL from XML
@@ -263,12 +214,6 @@ sub genome_list {
     close($fileout);
 }
 
-# I can't seem to get curl to work sometimes
-# but
-# wget --load-cookies=cookies https://file.gz
-# works
-# also changed from http to https
-
 sub download_files {
     my @urls   = @{ $_[0] };
     my $outdir = $_[1];
@@ -276,7 +221,7 @@ sub download_files {
     foreach my $current (@urls) {
         my ( $file, $dir, $ext ) = fileparse( $current, '\.gz' );
         my @jgi_id = split /\//, $dir;
-        my $taxa = "$jgi_id[8]";
+        my $taxa = "$jgi_id[2]";
 
         my @file_match
             = File::Find::Rule->file()->name("$file$ext")->in("$outdir");
