@@ -177,9 +177,7 @@ sub parse_phytozome_xml {
             #/portal/ext-api/downloads/get_tape_file?blocking=true&url=/PhytozomeV12/download/_JAMO/597f9cb67ded5e0452b3f367/Vunguiculata_469_v1.1.protein.fa.gz
             my $url   = $file_props->getAttribute('url');
             my $label = (split /\//, $url)[9];
-            print Dumper $label;
             if ( $url =~ m/.*protein\.fa\.gz/ ) {
-                            print $file_props->getAttribute('url') . "\n";
                 $results{"$label"} = "$url";
             }
         }
@@ -191,7 +189,7 @@ sub parse_phytozome_xml {
 
     if ( $list eq "true" ) {
 
-        genome_list( \%results, $portal );
+        genome_list_phytozome( \%results, $portal );
     }
 
     else {
@@ -270,6 +268,24 @@ sub genome_list {
 
         print $fileout
             "$taxa\t$jgi_id[2]\thttps://genome.jgi.doe.gov/portal/$jgi_id[2]/download/$jgi_id[4]\n";
+    }
+
+    close($fileout);
+}
+
+sub genome_list_phytozome {
+    my %list_of_urls = %{ $_[0] };
+    my $portal       = $_[1];
+
+    my $filename = "$portal\/$portal\_list.txt";
+    open my $fileout, '>>', $filename;
+
+    foreach ( sort keys %list_of_urls ) {
+        my $taxa   = $_;
+        my $url    = $list_of_urls{$_};
+
+        print $fileout
+            "$taxa\thttps://genome.jgi.doe.gov/portal/$url\n";
     }
 
     close($fileout);
