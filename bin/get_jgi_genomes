@@ -8,6 +8,8 @@ use File::Find::Rule;
 use File::Path qw(make_path);
 use Getopt::Std;
 use List::MoreUtils qw(uniq);
+use open qw(:std :utf8);
+use utf8;
 use XML::LibXML;
 
 use Data::Dumper;
@@ -192,8 +194,6 @@ sub genome_list {
     my %list_of_urls = %{ $_[0] };
     my $outdir       = $_[1];
     my $portal       = $_[2];
-
-    print Dumper %list_of_urls;
 
     my $filename = "$outdir\/$portal\_list.txt";
     open my $fileout, '>>', $filename;
