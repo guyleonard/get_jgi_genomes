@@ -18,7 +18,7 @@ my $cookies = 'cookies';
 my ( $username, $password, $outdir, $project );
 
 my %options = ();
-getopts( 'u:p:c:g:o:fam:P:lh', \%options ) or display_help();
+getopts( 'u:p:c:g:fam:P:lh', \%options ) or display_help();
 
 # Help
 if ( $options{h} ) { display_help(); }
@@ -43,41 +43,41 @@ if ( $options{l} ) {
 }
 
 # Download Project XML & Output Dir
-if ( defined $options{o} && defined $options{f} ) {
-    $outdir  = "$options{o}";
+if ( defined $options{f} ) {
     $project = 'fungi';
 
     print "Downloading XML from JGI -cosm Project: Mycocosm aka $project\n";
     download_xml($project);
+
     print "Parsing XML\n";
-    parse_cosm_xml( $project, $outdir, $list );
+    parse_cosm_xml( $project, $list );
 }
-elsif ( defined $options{o} && defined $options{a} ) {
-    $outdir  = "$options{o}";
+elsif ( defined $options{a} ) {
     $project = 'algae';
 
     print "Downloading XML from JGI -cosm Project: Phycocosm aka $project\n";
     download_xml($project);
+
     print "Parsing XML\n";
-    parse_cosm_xml( $project, $outdir, $list );
+    parse_cosm_xml( $project, $list );
 }
-elsif ( defined $options{o} && defined $options{P} ) {
-    $outdir  = "$options{o}";
+elsif ( defined $options{P} ) {
     $project = 'PhytozomeV' . "$options{P}";
 
     print "Downloading XML from JGI -zome Project: $project\n";
     download_xml($project);
+
     print "Parsing XML\n";
-    parse_zome_xml( $project, $outdir, $list );
+    parse_phytozome_xml( $project, $list );
 }
-elsif ( defined $options{o} && defined $options{m} ) {
-    $outdir  = "$options{o}";
+elsif ( defined $options{m} ) {
     $project = 'MetazomeV' . "$options{m}";
 
     print "Downloading XML from JGI -zome Project: $project\n";
     download_xml($project);
+
     print "Parsing XML\n";
-    parse_zome_xml( $project, $outdir, $list );
+    parse_zome_xml( $project, $list );
 }
 else {
     print "No Output Directory or Group Project ID\n";
@@ -87,7 +87,7 @@ else {
 sub display_help {
     print "Usage:\n";
     print
-        "  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] -o <outdir> (-l)\n\n";
+        "  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-l)\n\n";
     print "Required:\n";
     print "\t-u <username>\n";
     print "\t-p <password>\n";
@@ -157,13 +157,52 @@ sub download_xml {
     run_cmd("sed -i \'s/&quot;//g\' $portal\_files.xml");
 }
 
-sub parse_zome_xml {
+sub parse_phytozome_xml {
+
+    my ( $portal, $list ) = @_;
+
+    my $xml_file = "$portal\_files.xml";
+
+    my $portal_xml
+        = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
+
+    my $query = '//folder[@name="annotation"]';
+
+    my %results;
+
+    for my $file ( $portal_xml->findnodes($query) ) {
+        for my $file_props ( $file->findnodes('//file') ) {
+
+
+            #/portal/ext-api/downloads/get_tape_file?blocking=true&url=/PhytozomeV12/download/_JAMO/597f9cb67ded5e0452b3f367/Vunguiculata_469_v1.1.protein.fa.gz
+            my $url   = $file_props->getAttribute('url');
+            my $label = (split /\//, $url)[9];
+            print Dumper $label;
+            if ( $url =~ m/.*protein\.fa\.gz/ ) {
+                            print $file_props->getAttribute('url') . "\n";
+                $results{"$label"} = "$url";
+            }
+        }
+    }
+
+    if ( !-d $portal ) {
+        make_path($portal);
+    }
+
+    if ( $list eq "true" ) {
+
+        genome_list( \%results, $portal );
+    }
+
+    else {
+        download_files( \%results, $portal );
+    }
 }
 
 ## Parse the XML DOM
 sub parse_cosm_xml {
 
-    my ( $portal, $outdir, $list ) = @_;
+    my ( $portal, $list ) = @_;
 
     my $xml_file = "$portal\_files.xml";
 
@@ -203,27 +242,25 @@ sub parse_cosm_xml {
         }
     }
 
-    if ( !-d $outdir ) {
-        make_path($outdir);
+    if ( !-d $portal ) {
+        make_path($portal);
     }
 
     if ( $list eq "true" ) {
 
-        genome_list( \%results, $outdir, $portal );
+        genome_list( \%results, $portal );
     }
 
     else {
-        download_files( \%results, $outdir );
+        download_files( \%results, $portal );
     }
-
 }
 
 sub genome_list {
     my %list_of_urls = %{ $_[0] };
-    my $outdir       = $_[1];
-    my $portal       = $_[2];
+    my $portal       = $_[1];
 
-    my $filename = "$outdir\/$portal\_list.txt";
+    my $filename = "$portal\/$portal\_list.txt";
     open my $fileout, '>>', $filename;
 
     foreach ( sort keys %list_of_urls ) {
@@ -240,7 +277,7 @@ sub genome_list {
 
 sub download_files {
     my %list_of_urls = %{ $_[0] };
-    my $outdir       = $_[1];
+    my $portal       = $_[1];
 
     foreach ( sort keys %list_of_urls ) {
         my $taxa   = $_;
@@ -250,7 +287,7 @@ sub download_files {
         print "\tRetrieving: $jgi_id[4]\n";
 
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov/portal/$jgi_id[2]/download/$jgi_id[4]' -b cookies > $outdir\/$jgi_id[4]"
+            "curl --silent 'https://genome.jgi.doe.gov/portal/$jgi_id[2]/download/$jgi_id[4]' -b cookies > $portal\/$jgi_id[4]"
         );
     }
 }
