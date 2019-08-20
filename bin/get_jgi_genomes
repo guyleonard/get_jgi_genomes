@@ -192,7 +192,7 @@ sub parse_phytozome_xml {
     }
 
     else {
-        download_files( \%results, $portal );
+        download_files_phytozome( \%results, $portal );
     }
 }
 
@@ -249,7 +249,7 @@ sub parse_cosm_xml {
     }
 
     else {
-        download_files( \%results, $portal );
+        download_files_cosms( \%results, $portal );
     }
 }
 
@@ -272,6 +272,23 @@ sub genome_list {
     close($fileout);
 }
 
+sub download_files_cosms {
+    my %list_of_urls = %{ $_[0] };
+    my $portal       = $_[1];
+
+    foreach ( sort keys %list_of_urls ) {
+        my $taxa     = $_;
+        my $url      = $list_of_urls{$_};
+        my $filename = ( split /\//, $url )[4];
+
+        print "\tRetrieving: $filename\n";
+
+        run_cmd(
+            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename"
+        );
+    }
+}
+
 sub genome_list_phytozome {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
@@ -289,7 +306,7 @@ sub genome_list_phytozome {
     close($fileout);
 }
 
-sub download_files {
+sub download_files_phytozome {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
 
