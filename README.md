@@ -2,78 +2,28 @@
 Download all the available Amino Acid sequences from the genomes contained within JGI's various -zomes and -cosms.
 
 # Usage
-    Usage: ./bin/get_jgi_genomes -u username -p password -g name -o name
-    Required:
-    	-u username
-    	-p password
-    	-g project name
-      -o output dir
-    Optional:
-     -l print list of all taxa only
+Log in to JGI with your username and password (-u and -p) to generate the required 'cookie' file to allow your downloads to process. Then use one of the portal options (-f, -a or -P or -m with a version number) to download the amino acid sequences from all available genome projects. You can generate a list of all the available genomes with the '-l' option, no downloads will occur. XML files are automatically refreshed after 10 days, or if you delete the file and re-run your commands.
 
-## List of -zomes and -cosms
+NB - Point releases with the '-zomes', e.g. 12.1 do not seem to work, so please only use whole integers. Metazome seems to be abandoned and sometimes has file download issues.
 
-* Phytozome V12 as 'PhytozomeV12'
-* Metazome V3 as 'MetazomeV3' - possibly abandoned
-* Mycocosm as 'fungi'
-* Phycocosm as 'algae'
+```
+Usage:
+  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-l)
 
-Use the name in quotes for the '-g' option. NB - point releases, e.g. V12.1, don't seem to work, so please use whole integers, e.g. V12
+Required:
+  -u <username>
+  -p <password>
+or
+  -c <cookie file>
+Options:
+  -f Mycocosm aka fungi
+  -a Phycocosm aka algae
+  -P <version> PhytozomeV
+  -m <metazome> MetazomeV
+Listing:
+  -l list only, no downloads
+```
 
-# Notes (mostly grumpy)
-JGI offers several ways to download its genomic data:
+# Broken?
 
- 1) Individual Download - You can go to the specific genome portal and download whatever file you need from that project e.g [here](http://genome.jgi.doe.gov/pages/dynamicOrganismDownload.jsf?organism=Aaoar1).
- 
- 2) Multiple Download - Following the same logic as above, instead of just a single project ID, e.g. "Aaoar1" you can use a global project such as "fungi", like so [here](http://genome.jgi.doe.gov/pages/dynamicOrganismDownload.jsf?organism=fungi).
- 
- 3) GLOBUS - I am not going to even bother explaining this one as it would fill up most of this repo with bad vibes. GLOBUS not even once.
-
-All three are web browser based methods (although GLOBUS may have a command line too) and are slo, prone to connection time outs and take some time to scan for files and load the right interface etc etc. Luckily JGI also keep a XML documents (by way of a rudimentary API) of all their projects with links to the download location of each file! This is good for us, XML is easily parseable!
-
-**NB - Users should be aware that individual genome projects may have their own usage/licensing conditions - it is up to each user to make themselves aware of this before using the data. See [here](https://github.com/guyleonard/get_jgi_genomes/blob/master/data_usage_and_download_policy.md)**
-
-Currently I have only focused on the 'fungi' portal (not Mycocosm, please see JGI Quirks for disambiguation), and the "Filtered Models ("best")" list (which is the full taxa list). I will start to add in various other portal/options as needed, or on request once the fungi download is satisfactorily complete.
-
-## JGI Quirks
-
- * The XMLs for each portal are, of course, completely different. :|
- 
- * Although the fungal portal is called "Mycocosm", this list only seems to contain a list of newly added fungi from [here](http://jgi.doe.gov/our-science/science-programs/fungal-genomics/recent-fungal-genome-releases/) and not the total content of the "fungi" portal which is contained in "Files". :|
- 
- * The two lists: 'Filtered...' and 'All...' are not what you might initially think. :|
-  * All models, Filtered and Not = 570, 566 unique
-  * Filtered Models (best) = 1612, 757 unique
-
- * Even when you do get a list of URLs to download, they include multiple filename types and data types :|
-  * GFF3 and FASTA
-  * \*.aa.fasta.gz 
-  * \*.proteins.fasta.gz
-  * project name
-  * organism name
-
-## XML Layout
-
-Here is a rough layout of the 'fungi' XML document. I have shown the path to get to the predicted proteins for each project within the 'fungi' project. You should now read the section JGI Quirks...
-
-    - organismDownloads->name=fungi
-      |
-      + folder->name=Raw Data
-      |
-      + folder->name=Mycocosm
-      |
-      + folder->name=Files
-        |
-        + folders->names=(ESTs and EST Clusters, Additonal Files, Assembly)->folders...
-        |
-        + folder->name=Annotation
-          |
-          + folder->name=All models, Filtered and Not
-          |
-          + folder->name=Filtered Models ("best")
-            |
-            + folders
-            |
-            + folder->name=Proteins
-              |
-              + files->label,url,filename,size,timestamp,project,md5
+If the downloads of the XML or AA files no longer work, it probably means JGI have changed something in the layout of their XML files, let me know and I will try and update it or pass along a pull request with your fixes.
