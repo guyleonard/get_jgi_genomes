@@ -149,7 +149,7 @@ sub download_xml {
     }
     else {
         print
-            "\t$portal\_files.xml has not been modified in > 10 days, skipping download.\n";
+            "\t$portal\_files.xml is not older than 10 days, skipping re-download.\n";
     }
 
     # I can't get the XML parsing to work when "&quot;" exists in the file
