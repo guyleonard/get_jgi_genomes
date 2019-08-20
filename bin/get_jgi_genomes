@@ -173,10 +173,9 @@ sub parse_phytozome_xml {
     for my $file ( $portal_xml->findnodes($query) ) {
         for my $file_props ( $file->findnodes('//file') ) {
 
-
-            #/portal/ext-api/downloads/get_tape_file?blocking=true&url=/PhytozomeV12/download/_JAMO/597f9cb67ded5e0452b3f367/Vunguiculata_469_v1.1.protein.fa.gz
-            my $url   = $file_props->getAttribute('url');
-            my $label = (split /\//, $url)[9];
+#/portal/ext-api/downloads/get_tape_file?blocking=true&url=/PhytozomeV12/download/_JAMO/597f9cb67ded5e0452b3f367/Vunguiculata_469_v1.1.protein.fa.gz
+            my $url = $file_props->getAttribute('url');
+            my $label = ( split /\//, $url )[9];
             if ( $url =~ m/.*protein\.fa\.gz/ ) {
                 $results{"$label"} = "$url";
             }
@@ -281,11 +280,10 @@ sub genome_list_phytozome {
     open my $fileout, '>>', $filename;
 
     foreach ( sort keys %list_of_urls ) {
-        my $taxa   = $_;
-        my $url    = $list_of_urls{$_};
+        my $taxa = $_;
+        my $url  = $list_of_urls{$_};
 
-        print $fileout
-            "$taxa\thttps://genome.jgi.doe.gov/portal/$url\n";
+        print $fileout "$taxa\thttps://genome.jgi.doe.gov$url\n";
     }
 
     close($fileout);
@@ -296,14 +294,14 @@ sub download_files {
     my $portal       = $_[1];
 
     foreach ( sort keys %list_of_urls ) {
-        my $taxa   = $_;
-        my $url    = $list_of_urls{$_};
-        my @jgi_id = split /\//, $url;
+        my $taxa     = $_;
+        my $url      = $list_of_urls{$_};
+        my $filename = ( split /\//, $url )[9];
 
-        print "\tRetrieving: $jgi_id[4]\n";
+        print "\tRetrieving: $filename\n";
 
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov/portal/$jgi_id[2]/download/$jgi_id[4]' -b cookies > $portal\/$jgi_id[4]"
+            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename"
         );
     }
 }
