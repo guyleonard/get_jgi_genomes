@@ -98,7 +98,7 @@ sub display_help {
     print "\t-a Phycocosm aka algae\n";
     print "\t-P <version> PhytozomeV\n";
     print "\t-m <metazome> MetazomeV\n";
-    print "Listing:"
+    print "Listing:";
     print "\t-l list only, no downloads\n";
 
     exit(1);
