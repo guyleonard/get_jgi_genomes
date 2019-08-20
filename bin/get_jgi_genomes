@@ -77,7 +77,7 @@ elsif ( defined $options{m} ) {
     download_xml($project);
 
     print "Parsing XML\n";
-    parse_zome_xml( $project, $list );
+    parse_phytozome_xml( $project, $list );
 }
 else {
     print "No Output Directory or Group Project ID\n";
@@ -170,13 +170,15 @@ sub parse_phytozome_xml {
 
     my %results;
 
+    my $search = 'protein';
+    if ( $portal =~ m/metazome/i ) { $search = 'peptide' }
+
     for my $file ( $portal_xml->findnodes($query) ) {
         for my $file_props ( $file->findnodes('//file') ) {
 
-#/portal/ext-api/downloads/get_tape_file?blocking=true&url=/PhytozomeV12/download/_JAMO/597f9cb67ded5e0452b3f367/Vunguiculata_469_v1.1.protein.fa.gz
             my $url = $file_props->getAttribute('url');
             my $label = ( split /\//, $url )[9];
-            if ( $url =~ m/.*protein\.fa\.gz/ ) {
+            if ( $url =~ m/.*$search\.fa\.gz/ ) {
                 $results{"$label"} = "$url";
             }
         }
