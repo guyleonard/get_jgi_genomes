@@ -25,7 +25,7 @@ Listing:
 ```
 
 # Other Genome Download Tools
- * [https://github.com/guyleonard/get_ensembl_genomes](Get Ensemble Genomes)
+ * [Get Ensemble Genomes](https://github.com/guyleonard/get_ensembl_genomes)
 
 # Broken?
 If the downloads of the XML or AA files no longer work, it probably means JGI have changed something in the layout of their XML files, let me know and I will try and update it or pass along a pull request with your fixes.
