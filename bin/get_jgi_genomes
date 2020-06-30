@@ -154,7 +154,8 @@ sub download_xml {
         # Get portal List
         print "Downloading $portal XML - This may take some time...\n";
         run_cmd(
-            "curl 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal' -b $cookies > $portal\_files.xml"
+            "curl 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal' -b $cookies > $portal\_files.xml",
+            "$quiet"
         );
     }
     else {
@@ -164,7 +165,7 @@ sub download_xml {
 
     # I can't get the XML parsing to work when "&quot;" exists in the file
     # let's cheat and remove it with sed?
-    run_cmd("sed -i \'s/&quot;//g\' $portal\_files.xml");
+    run_cmd( "sed -i \'s/&quot;//g\' $portal\_files.xml", "$quiet" );
 }
 
 sub parse_phytozome_xml {
@@ -296,7 +297,8 @@ sub download_files_cosms {
         print "\tRetrieving: $filename\n";
 
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename"
+            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename",
+            "$quiet"
         );
     }
 }
@@ -330,7 +332,8 @@ sub download_files_phytozome {
         print "\tRetrieving: $filename\n";
 
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename"
+            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename",
+            "$quiet"
         );
     }
 }
