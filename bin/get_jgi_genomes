@@ -16,12 +16,17 @@ use Data::Dumper;
 my $list    = "false";
 my $cookies = 'cookies';
 my ( $username, $password, $outdir, $project );
+my $quiet = "false";
 
 my %options = ();
-getopts( 'u:p:c:g:fam:P:lh', \%options ) or display_help();
+getopts( 'u:p:c:g:fam:P:lhq', \%options ) or display_help();
 
 # Help
 if ( $options{h} ) { display_help(); }
+
+if ( $options{q} ) {
+    $quiet = "true";
+}
 
 # Signin Options / Cookies
 if ( defined $options{u} && defined $options{p} ) {
@@ -93,11 +98,13 @@ sub display_help {
     print "\t-p <password>\n";
     print "or\n";
     print "\t-c <cookie file>\n";
-    print "Options:\n";
+    print "Database Options:\n";
     print "\t-f Mycocosm aka fungi\n";
     print "\t-a Phycocosm aka algae\n";
     print "\t-P <version> PhytozomeV\n";
     print "\t-m <metazome> MetazomeV\n";
+    print "JGI ID:";
+    print "\t-i <id> JGI ID of Genome Project\n";
     print "Listing:";
     print "\t-l list only, no downloads\n";
 
@@ -118,8 +125,8 @@ sub signin {
         if ( -A 'cookies' > 1 ) {
             print "Logging In Again...\n";
             run_cmd(
-                #"curl --silent 'https://signon-old.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
-                "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
+                "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
+                "$quiet"
             );
             print "Successfully Logged In!\n";
         }
@@ -130,8 +137,8 @@ sub signin {
     else {
         print "Logging In...\n";
         run_cmd(
-                #"curl --silent 'https://signon-old.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
-                "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null"
+            "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
+            "$quiet"
         );
         print "Successfully Logged In!\n";
     }
@@ -330,7 +337,7 @@ sub download_files_phytozome {
 
 sub run_cmd {
     my ( $cmd, $quiet ) = @_;
-    msg("Running: $cmd") unless $quiet;
+    msg("Running: $cmd") unless $quiet eq "true";
     system($cmd) == 0 or error("Error $? running command");
 }
 
