@@ -51,7 +51,7 @@ if ( $options{l} ) {
 if ( defined $options{f} ) {
     $project = 'fungi';
 
-    print "Downloading XML from JGI -cosm Project: Mycocosm aka $project\n";
+    print "User Selected: Mycocosm aka $project\n";
     download_xml($project);
 
     print "Parsing XML\n";
@@ -60,7 +60,7 @@ if ( defined $options{f} ) {
 elsif ( defined $options{a} ) {
     $project = 'algae';
 
-    print "Downloading XML from JGI -cosm Project: Phycocosm aka $project\n";
+    print "User Selected: Phycocosm aka $project\n";
     download_xml($project);
 
     print "Parsing XML\n";
@@ -69,7 +69,7 @@ elsif ( defined $options{a} ) {
 elsif ( defined $options{P} ) {
     $project = 'PhytozomeV' . "$options{P}";
 
-    print "Downloading XML from JGI -zome Project: $project\n";
+    print "User Selected: $project\n";
     download_xml($project);
 
     print "Parsing XML\n";
@@ -78,7 +78,7 @@ elsif ( defined $options{P} ) {
 elsif ( defined $options{m} ) {
     $project = 'MetazomeV' . "$options{m}";
 
-    print "Downloading XML from JGI -zome Project: $project\n";
+    print "User Selected: $project\n";
     download_xml($project);
 
     print "Parsing XML\n";
@@ -111,7 +111,7 @@ sub display_help {
     exit(1);
 }
 
-# JGI insist we log in, that's okay. You should be aware that different genome portals
+# JGI insist that we log in, that's okay. You should be aware that different genome portals
 # may have different licenses etc...it's up to the individual user to be aware of these.
 # So, let's login to the DOE JGI SSO
 # We can do this with curl and our username/password
@@ -146,27 +146,36 @@ sub signin {
 }
 
 # Now let's use curl again with our cookie signon and scrape the XML
-# Only refresh if the file is older than 10 days...You can change this as you like
 sub download_xml {
     my $portal = shift;
 
-    if ( !-e "$portal\_files.xml" ) {    #> 10 ) {
+    if ( !-e "$portal\_files.xml" ) {
 
         # Get portal List
-        print "Downloading $portal XML - This may take some time...\n";
+        print "Downloading $portal XML - This may take a few minutes...\n";
         run_cmd(
             "curl 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal' -b $cookies > $portal\_files.xml",
             "$quiet"
         );
     }
+    elsif ( -e "$portal\_files.xml" ) {
+        if (   -A "$portal\_files.xml" > '10'
+            || -M "$portal\_files.xml" > '10' )
+        {
+            print
+                "\tWarning: $portal\_files.xml is older than 10 days. You may wish to delete it and try again.\n";
+        }
+        else {
+            print "$portal\_files.xml previously downloaded and less than 10 days ago. Continuing...\n";
+        }
+    }
     else {
-        print
-            "\t$portal\_files.xml is not older than 10 days, skipping re-download.\n";
+        print "Error: Not sure how we got here!\n";
     }
 
     # I can't get the XML parsing to work when "&quot;" exists in the file
     # let's cheat and remove it with sed?
-    run_cmd( "sed -i \'s/&quot;//g\' $portal\_files.xml", "$quiet" );
+    run_cmd( "sed -i \'s/&quot;//g\' $portal\_files.xml", "true" );
 }
 
 sub parse_phytozome_xml {
