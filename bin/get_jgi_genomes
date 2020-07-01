@@ -92,7 +92,7 @@ else {
 sub display_help {
     print "Usage:\n";
     print
-        "  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-l)\n\n";
+        "  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-i) (-l) (-q)\n\n";
     print "Required:\n";
     print "\t-u <username>\n";
     print "\t-p <password>\n";
@@ -101,8 +101,8 @@ sub display_help {
     print "Database Options:\n";
     print "\t-f Mycocosm aka fungi\n";
     print "\t-a Phycocosm aka algae\n";
-    print "\t-P <version> PhytozomeV\n";
-    print "\t-m <metazome> MetazomeV\n";
+    print "\t-P <version> PhytozomeV aka plants\n";
+    print "\t-m <metazome> MetazomeV aka metazoans\n";
     print "JGI ID:";
     print "\t-i <id> JGI ID of Genome Project\n";
     print "Listing:";
@@ -122,25 +122,26 @@ sub signin {
     my $pass = shift;
 
     if ( -e 'cookies' ) {
-        if ( -A 'cookies' > 1 ) {
-            print "Logging In Again...\n";
+        if ( -A 'cookies' > 1 || -M 'cookies' > 1 ) {
+            print
+                "It has been longer than one day since your last logged in.\nAttempting to login again...\n";
             run_cmd(
                 "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
                 "$quiet"
             );
-            print "Successfully Logged In!\n";
+            check_cookie();
         }
         else {
-            print "Already logged in...\n";
+            print "You are already logged in...please use the '-c' option.\n";
         }
     }
     else {
-        print "Logging In...\n";
+        print "Attempting to login...\n";
         run_cmd(
             "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
             "$quiet"
         );
-        print "Successfully Logged In!\n";
+        check_cookie();
     }
 }
 
@@ -335,6 +336,28 @@ sub download_files_phytozome {
             "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename",
             "$quiet"
         );
+    }
+}
+
+sub check_cookie {
+
+    my $logged_in = 'flase';
+
+    open my $cookie, '<', "cookies" or die "Cannot open cookies file: $!\n";
+    while (<$cookie>) {
+        my $line = $_;
+        if ( $line =~ m/TRUE/ ) {
+            $logged_in = 'true';
+        }
+    }
+
+    if ( $logged_in eq 'true' ) {
+        print "Login Successfull!\n";
+    }
+    else {
+        print
+            "There was a problem with your login attempt. Please Try again.\n";
+        exit(1);
     }
 }
 
