@@ -5,106 +5,108 @@ use warnings;
 use Cwd;
 use File::Basename;
 use File::Path qw(make_path);
-use Getopt::Std;
+use Getopt::Long qw(:config no_ignore_case);
 use List::MoreUtils qw(uniq);
 use open qw(:std :utf8);
 use utf8;
 use XML::LibXML;
 
+our $VERSION = "0.1";
+
 #
-# Global Variables
+# Getops Variables
 #
-my $cookies = 'cookies';
-my $jgi_id  = 'false';
-my $list    = 'false';
-my $quiet   = 'false';
-my ( $username, $password, $outdir, $project );
+my ( $username, $password, $cookies );
+my ( $algae, $fungi, $metazoa, $plants );
+my $jgi_id = 'false';
+my $list   = 'false';
+my $quiet  = 'false';
 
 #
 # Getopt
 #
-my %options = ();
-getopts( 'u:p:c:fam:P:i:lhq', \%options ) or display_help();
-
-# Help
-if ( $options{h} ) { display_help(); }
-
-# Quiet
-if ( $options{q} ) { $quiet = "true"; }
+GetOptions(
+    'user|u=s'    => \$username,
+    'pass|p=s'    => \$password,
+    'cookies|c'   => \$cookies,
+    'algae|a'     => \$algae,
+    'fungi|f'     => \$fungi,
+    'metazoa|m=s' => \$metazoa,
+    'plants|P=s'  => \$plants,
+    'id|i=s'      => \$jgi_id,
+    'list|l'      => sub { $list = 'true' },
+    'quiet|q'     => sub { $quiet = 'true' },
+    'version|v'   => sub { print "get_jgi_genomes Version: $VERSION\n"; exit(0) },
+    'help|h' => sub { display_help() }
+);
 
 # Signin Options / Cookies
-if ( defined $options{u} && defined $options{p} ) {
-    $username = "$options{u}";
-    $password = "$options{p}";
+if ( $username && $password ) {
     signin( $username, $password );
+    portal();
 }
-elsif ( defined $options{c} ) {
-    $cookies = $options{c};
-    print "INFO: User supplied cookie.\n";
-    check_cookie_previous();
+elsif ($cookies) {
+    check_cookie_old();
+    portal();
 }
 else {
+    print "WARN: Missing one of '-u & -p' or '-c'\n";
     display_help();
 }
 
-# JGI ID
-if ( defined $options{i} ) {
-    $jgi_id = "$options{i}";
-}
+#
+# Main
+#
+sub portal {
 
-# List Only
-if ( $options{l} ) {
-    $list = "true";
-    print "INFO: Output List Only\n";
-}
+    # Download Project XML & Create Output Dir
+    # Fungi
+    if ($fungi) {
+        my $project = 'fungi';
 
-# Download Project XML & Create Output Dir
-# Fungi
-if ( defined $options{f} ) {
-    $project = 'fungi';
+        print "INFO: User Selected Mycocosm aka $project\n";
+        download_xml($project);
 
-    print "INFO: User Selected Mycocosm aka $project\n";
-    download_xml($project);
+        print "INFO: Parsing XML\n";
+        parse_cosm_xml($project);
+    }
 
-    print "INFO: Parsing XML\n";
-    parse_cosm_xml( $project, $list, $jgi_id );
-}
+    # Algae
+    elsif ($algae) {
+        my $project = 'phycocosm';
 
-# Algae
-elsif ( defined $options{a} ) {
-    $project = 'algae';
+        print "INFO: User Selected Phycocosm aka $project\n";
+        download_xml($project);
 
-    print "INFO: User Selected Phycocosm aka $project\n";
-    download_xml($project);
+        print "INFO: Parsing XML\n";
+        parse_cosm_xml($project);
+    }
 
-    print "INFO: Parsing XML\n";
-    parse_cosm_xml( $project, $list );
-}
+    # Plants
+    elsif ($plants) {
+        my $project = 'PhytozomeV' . "$plants";
 
-# Plants
-elsif ( defined $options{P} ) {
-    $project = 'PhytozomeV' . "$options{P}";
+        print "INFO: User Selected Phytozome aka $project\n";
+        download_xml($project);
 
-    print "INFO: User Selected Phytozome aka $project\n";
-    download_xml($project);
+        print "INFO: Parsing XML\n";
+        parse_zome_xml($project);
+    }
 
-    print "INFO: Parsing XML\n";
-    parse_zome_xml( $project, $list );
-}
+    # Animals
+    elsif ($metazoa) {
+        my $project = 'MetazomeV' . "$metazoa";
 
-# Animals
-elsif ( defined $options{m} ) {
-    $project = 'MetazomeV' . "$options{m}";
+        print "INFO: User Selected Metazome aka $project\n";
+        download_xml($project);
 
-    print "INFO: User Selected Metazome aka $project\n";
-    download_xml($project);
-
-    print "INFO: Parsing XML\n";
-    parse_zome_xml( $project, $list );
-}
-else {
-    print "WARN: You must define a portal/cosm.\n";
-    exit(1);
+        print "INFO: Parsing XML\n";
+        parse_zome_xml($project);
+    }
+    else {
+        print "WARN: You must define a portal/cosm.\n";
+        exit(1);
+    }
 }
 
 #
@@ -117,30 +119,29 @@ sub signin {
 
     print "INFO: Attempting to login...\n";
     run_cmd(
-        "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
+        "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c signon.cookie > /dev/null",
         "$quiet"
     );
-    check_cookie_post();
+
+    check_cookie_valid();
 }
 
-sub check_cookie_previous {
+sub check_cookie_old {
 
-    if ( -A 'cookies' > 1 || -M 'cookies' > 1 ) {
+    if ( -A 'signon.cookie' > 1 || -M 'signon.cookie' > 1 ) {
         print
             "INFO: It has been longer than one day since your last login.\nINFO: Please use the -u and -p options.\n";
         exit(1);
     }
     else {
-        print
-            "INFO: You are already logged in...please use the '-c' option.\n";
+        check_cookie_valid();
     }
 }
 
-sub check_cookie_post {
-
+sub check_cookie_valid {
     my $logged_in = 'false';
-
-    open my $cookie, '<', "cookies" or die "Cannot open cookies file: $!\n";
+    open my $cookie, '<', "signon.cookie"
+        or die "Cannot open signon.cookie file: $!\n";
 
     while (<$cookie>) {
         my $line = $_;
@@ -183,7 +184,7 @@ sub download_xml {
         # Get portal List
         print "Downloading $portal XML - This may take a few minutes...\n";
         run_cmd(
-            "curl 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal' -b $cookies > $portal\_files.xml",
+            "curl 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal' -b signon.cookie > $portal\_files.xml",
             "$quiet"
         );
     }
@@ -199,99 +200,110 @@ sub download_xml {
 # Mycocosm and Algae
 sub parse_cosm_xml {
 
-    my ( $portal, $list, $jgi_id ) = @_;
+    my $portal = shift;
+    my %results;
 
     my $xml_file = "$portal\_files.xml";
 
-    my $portal_xml
-        = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
+    if ( !-z $xml_file ) {
 
-    my $query
-        = '/organismDownloads[@name="'
-        . $portal
-        . '"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="Filtered Models (best)"]/folder[@name="Proteins"]';
+        my $portal_xml
+            = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-    my %results;
+        my $query
+            = '/organismDownloads[@name="'
+            . $portal
+            . '"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="Filtered Models (best)"]/folder[@name="Proteins"]';
 
-    for my $file ( $portal_xml->findnodes($query) ) {
-        for my $file_props ( $file->findnodes('./*') ) {
+        for my $file ( $portal_xml->findnodes($query) ) {
+            for my $file_props ( $file->findnodes('./*') ) {
 
-            my $label = $file_props->getAttribute('label');
-            my $url   = $file_props->getAttribute('url');
+                my $label = $file_props->getAttribute('label');
+                my $url   = $file_props->getAttribute('url');
 
-            # if the files don't look like this, then we don't want them
-            # Armlut1_GeneCatalog_proteins_20180531.aa.fasta.gz
-            # *proteins.fasta.gz
-            # we also remove any files with some modifiers
-            # then push them to a hash to remove genomes with two sets
-            # of proteins.
-            # it's a bit of a fudge, but the xml makes no effort to define
-            # the set of AAs that are representative of the genome
+                # if the files don't look like this, then we don't want them
+                # Armlut1_GeneCatalog_proteins_20180531.aa.fasta.gz
+                # *proteins.fasta.gz
+                # we also remove any files with some modifiers
+                # then push them to a hash to remove genomes with two sets
+                # of proteins.
+                # it's a bit of a fudge, but the xml makes no effort to define
+                # the set of AAs that are representative of the genome
 
-            if ( $url =~ m/.*\_GeneCatalog_proteins_\d+\.aa\.fasta.gz/ ) {
-                if ( $url !~ m/primary|secondary|alleles|diploid|old/ ) {
+                if ( $url =~ m/.*\_GeneCatalog_proteins_\d+\.aa\.fasta.gz/ ) {
+                    if ( $url !~ m/primary|secondary|alleles|diploid|old/ ) {
+                        $results{"$label"} = "$url";
+                    }
+                }
+                elsif ( $url =~ m/.*proteins\.fasta\.gz/ ) {
                     $results{"$label"} = "$url";
                 }
             }
-            elsif ( $url =~ m/.*proteins\.fasta\.gz/ ) {
-                $results{"$label"} = "$url";
-            }
         }
+    }
+    else {
+        print "WARN: The $xml_file file is empty.\n";
+        exit(1);
     }
 
     if ( !-d $portal ) {
         make_path($portal);
     }
 
-    if ( $list eq "true" ) {
+    if ( $list eq 'true' ) {
         genome_list_cosm( \%results, $portal );
     }
     else {
         genome_list_cosm( \%results, $portal );
-        download_files_cosm( \%results, $portal, $jgi_id );
+        download_files_cosm( \%results, $portal );
     }
 }
 
 # Animals and Plants
 sub parse_zome_xml {
 
-    my ( $portal, $list ) = @_;
+    my $portal = shift;
+    my %results;
 
     my $xml_file = "$portal\_files.xml";
 
-    my $portal_xml
-        = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
+    if ( !-z $xml_file ) {
+        my $portal_xml
+            = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-    my $query = '//folder[@name="annotation"]';
+        my $query = '//folder[@name="annotation"]';
 
-    my %results;
+        my $search = 'protein';
+        if ( $portal =~ m/metazome/i ) { $search = 'peptide' }
 
-    my $search = 'protein';
-    if ( $portal =~ m/metazome/i ) { $search = 'peptide' }
+        for my $file ( $portal_xml->findnodes($query) ) {
+            for my $file_props ( $file->findnodes('//file') ) {
 
-    for my $file ( $portal_xml->findnodes($query) ) {
-        for my $file_props ( $file->findnodes('//file') ) {
-
-            my $url = $file_props->getAttribute('url');
-            my $label = ( split /\//, $url )[9];
-            if ( $url =~ m/.*$search\.fa\.gz/ ) {
-                $results{"$label"} = "$url";
+                my $url = $file_props->getAttribute('url');
+                my $label = ( split /\//, $url )[9];
+                if ( $url =~ m/.*$search\.fa\.gz/ ) {
+                    $results{"$label"} = "$url";
+                }
             }
         }
+    }
+    else {
+        print "WARN: The $xml_file file is empty.\n";
+        exit(1);
     }
 
     if ( !-d $portal ) {
         make_path($portal);
     }
 
-    if ( $list eq "true" ) {
+    if ( $list eq 'true' ) {
 
         genome_list_zome( \%results, $portal );
     }
 
     else {
         genome_list_zome( \%results, $portal );
-        download_files_zome( \%results, $portal, $jgi_id );
+        download_files_zome( \%results, $portal );
     }
 }
 
@@ -342,22 +354,18 @@ sub download_files_cosm {
     my $portal       = $_[1];
     my $jgi_id       = $_[2];
 
-    if ( $jgi_id ne 'false' ) {
-        foreach ( sort keys %list_of_urls ) {
-            my $taxa     = $_;
-            my $url      = $list_of_urls{$_};
-            my $filename = ( split /\//, $url )[4];
+    #if ( $jgi_id ne 'false' ) {
+    foreach ( sort keys %list_of_urls ) {
+        my $taxa     = $_;
+        my $url      = $list_of_urls{$_};
+        my $filename = ( split /\//, $url )[4];
 
-            print "\tRetrieving: $filename\n";
+        print "\tRetrieving: $filename\n";
 
-            run_cmd(
-                "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename",
-                "$quiet"
-            );
-        }
-    }
-    else {
-
+        run_cmd(
+            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename",
+            "$quiet"
+        );
     }
 }
 
@@ -397,6 +405,14 @@ sub msg {
     print STDERR "@_\n";
 }
 
+sub HELP_MESSAGE {
+    display_help();
+}
+
+sub VERSION_MESSAGE {
+    print "Version: $VERSION\n";
+}
+
 #
 # Help
 #
@@ -418,6 +434,4 @@ sub display_help {
     print "\t-i <id> JGI ID of Genome Project\n";
     print "Other:";
     print "\t-l list only, no downloads\n";
-
-    exit(1);
 }
