@@ -153,11 +153,24 @@ sub signin {
     }
 }
 
-# Now let's use curl again with our cookie signon and scrape the XML
+# Now let's use curl again with our cookie signon and download the XML file
+# which is where JGI stores the information of each project and its associated files
 sub download_xml {
     my $portal = shift;
 
-    if ( !-e "$portal\_files.xml" ) {
+    if ( -e "$portal\_files.xml" ) {
+        if (   -A "$portal\_files.xml" > '10'
+            || -M "$portal\_files.xml" > '10' )
+        {
+            print
+                "\tWarning: $portal\_files.xml found and is greater than 10 days old. Continuing, but you may wish to stop, delete and try again.\n";
+        }
+        else {
+            print
+                "Info: $portal\_files.xml found and is less than 10 days old. Continuing.\n";
+        }
+    }
+    elsif ( !-e "$portal\_files.xml" ) {
 
         # Get portal List
         print "Downloading $portal XML - This may take a few minutes...\n";
@@ -166,24 +179,9 @@ sub download_xml {
             "$quiet"
         );
     }
-    elsif ( -e "$portal\_files.xml" ) {
-        if (   -A "$portal\_files.xml" > '10'
-            || -M "$portal\_files.xml" > '10' )
-        {
-            print
-                "\tWarning: $portal\_files.xml is older than 10 days. You may wish to delete it and try again.\n";
-        }
-        else {
-            print
-                "$portal\_files.xml previously downloaded and less than 10 days ago. Continuing...\n";
-        }
-    }
-    else {
-        print "Error: Not sure how we got here!\n";
-    }
 
     # I can't get the XML parsing to work when "&quot;" exists in the file
-    # let's cheat and remove it with sed?
+    # let's cheat and remove it with sed
     run_cmd( "sed -i \'s/&quot;//g\' $portal\_files.xml", "true" );
 }
 
