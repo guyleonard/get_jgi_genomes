@@ -268,6 +268,7 @@ sub parse_zome_xml {
 
     my $portal = shift;
     my %results;
+    my $search;
 
     my $xml_file = "$portal\_files.xml";
 
@@ -277,15 +278,26 @@ sub parse_zome_xml {
 
         my $query = '//folder[@name="annotation"]';
 
-        my $search = 'protein';
-        if ( $portal =~ m/metazome/i ) { $search = 'peptide' }
+        if ( defined $gff && $gff eq 'gff' ) {
+            $search = 'gene.gff3';
+            $portal = "$portal\/gff";
+        }
+        elsif ( defined $cds && $cds eq 'cds' ) {
+            $search = 'cds.fa';
+            $portal = "$portal\/cds";
+        }
+        else {
+            $search = 'protein.fa';
+            $portal = "$portal\/pep";
+            if ( $portal =~ m/metazome/i ) { $search = 'peptide.fa' }
+        }
 
         for my $file ( $portal_xml->findnodes($query) ) {
             for my $file_props ( $file->findnodes('//file') ) {
 
                 my $url = $file_props->getAttribute('url');
                 my $label = ( split /\//, $url )[9];
-                if ( $url =~ m/.*$search\.fa\.gz/ ) {
+                if ( $url =~ m/.*$search\.gz/ ) {
                     $results{"$label"} = "$url";
                 }
             }
@@ -318,7 +330,7 @@ sub genome_list_cosm {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
 
-    my $filename = "$portal\/$portal\_list.txt";
+    my $filename = "$portal\_list.txt";
     open my $fileout, '>>', $filename;
 
     foreach ( sort keys %list_of_urls ) {
@@ -337,7 +349,7 @@ sub genome_list_zome {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
 
-    my $filename = "$portal\/$portal\_list.txt";
+    my $filename = "$portal\_list.txt";
     open my $fileout, '>>', $filename;
 
     foreach ( sort keys %list_of_urls ) {
@@ -358,7 +370,6 @@ sub download_files_cosm {
     my $portal       = $_[1];
     my $jgi_id       = $_[2];
 
-    #if ( $jgi_id ne 'false' ) {
     foreach ( sort keys %list_of_urls ) {
         my $taxa     = $_;
         my $url      = $list_of_urls{$_};
@@ -397,13 +408,12 @@ sub download_files_zome {
         #     make_path("$portal\/$subdir");
         # }
         # else {
-        make_path("$portal\/$subdir");
-
+        #make_path("$portal\/$subdir");
         #}
 
         print "\tRetrieving: $filename\n";
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov$url' -b signon.cookie > $portal\/$subdir\/$filename",
+            "curl --silent 'https://genome.jgi.doe.gov$url' -b signon.cookie > $portal\/$filename",
             "$quiet"
         );
     }
