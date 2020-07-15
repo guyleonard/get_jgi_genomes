@@ -40,7 +40,8 @@ if ( defined $options{u} && defined $options{p} ) {
 }
 elsif ( defined $options{c} ) {
     $cookies = $options{c};
-    print "INFO: User supplied cookie, skipping signin process.\n";
+    print "INFO: User supplied cookie.\n";
+    check_cookie_previous();
 }
 else {
     display_help();
@@ -114,36 +115,33 @@ sub signin {
     my $user = shift;
     my $pass = shift;
 
-    if ( -e 'cookies' ) {
-        if ( -A 'cookies' > 1 || -M 'cookies' > 1 ) {
-            print
-                "INFO: It has been longer than one day since your last login.\nAttempting to login again...\n";
-            run_cmd(
-                "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
-                "$quiet"
-            );
-            check_cookie();
-        }
-        else {
-            print
-                "INFO: You are already logged in...please use the '-c' option.\n";
-        }
+    print "INFO: Attempting to login...\n";
+    run_cmd(
+        "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
+        "$quiet"
+    );
+    check_cookie_post();
+}
+
+sub check_cookie_previous {
+
+    if ( -A 'cookies' > 1 || -M 'cookies' > 1 ) {
+        print
+            "INFO: It has been longer than one day since your last login.\nINFO: Please use the -u and -p options.\n";
+        exit(1);
     }
     else {
-        print "INFO: Attempting to login...\n";
-        run_cmd(
-            "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
-            "$quiet"
-        );
-        check_cookie();
+        print
+            "INFO: You are already logged in...please use the '-c' option.\n";
     }
 }
 
-sub check_cookie {
+sub check_cookie_post {
 
-    my $logged_in = 'flase';
+    my $logged_in = 'false';
 
     open my $cookie, '<', "cookies" or die "Cannot open cookies file: $!\n";
+
     while (<$cookie>) {
         my $line = $_;
         if ( $line =~ m/TRUE/ ) {
@@ -164,6 +162,7 @@ sub check_cookie {
 #
 # XML Download
 #
+# Works for all portals
 sub download_xml {
     my $portal = shift;
 
@@ -197,7 +196,7 @@ sub download_xml {
 #
 # XML Parsing
 #
-# Mycocosm and Others
+# Mycocosm and Algae
 sub parse_cosm_xml {
 
     my ( $portal, $list, $jgi_id ) = @_;
@@ -245,15 +244,15 @@ sub parse_cosm_xml {
     }
 
     if ( $list eq "true" ) {
-        genome_list( \%results, $portal );
+        genome_list_cosm( \%results, $portal );
     }
     else {
-        genome_list( \%results, $portal );
-        download_files_cosms( \%results, $portal, $jgi_id );
+        genome_list_cosm( \%results, $portal );
+        download_files_cosm( \%results, $portal, $jgi_id );
     }
 }
 
-# Phytozome
+# Animals and Plants
 sub parse_zome_xml {
 
     my ( $portal, $list ) = @_;
@@ -287,19 +286,19 @@ sub parse_zome_xml {
 
     if ( $list eq "true" ) {
 
-        genome_list_zome ( \%results, $portal );
+        genome_list_zome( \%results, $portal );
     }
 
     else {
-        genome_list_zome ( \%results, $portal );
-        download_files_zome( \%results, $portal );
+        genome_list_zome( \%results, $portal );
+        download_files_zome( \%results, $portal, $jgi_id );
     }
 }
 
 #
 # Generate List Output
 #
-sub genome_list {
+sub genome_list_cosm {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
 
@@ -318,7 +317,7 @@ sub genome_list {
     close($fileout);
 }
 
-sub genome_list_zome  {
+sub genome_list_zome {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
 
@@ -338,7 +337,7 @@ sub genome_list_zome  {
 #
 # Download Files
 #
-sub download_files_cosms {
+sub download_files_cosm {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
     my $jgi_id       = $_[2];
