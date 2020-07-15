@@ -13,13 +13,14 @@ use XML::LibXML;
 
 use Data::Dumper;
 
-my $list    = "false";
+my $list    = 'false';
 my $cookies = 'cookies';
 my ( $username, $password, $outdir, $project );
-my $quiet = "false";
+my $quiet  = 'false';
+my $jgi_id = 'false';
 
 my %options = ();
-getopts( 'u:p:c:g:fam:P:lhq', \%options ) or display_help();
+getopts( 'u:p:c:fam:P:i:lhq', \%options ) or display_help();
 
 # Help
 if ( $options{h} ) { display_help(); }
@@ -42,6 +43,13 @@ else {
     display_help();
 }
 
+if ( defined $options{i} ) {
+    $jgi_id = "$options{i}";
+}
+else {
+    display_help();
+}
+
 if ( $options{l} ) {
     $list = "true";
     print "\tOutput: List Only\n";
@@ -55,7 +63,7 @@ if ( defined $options{f} ) {
     download_xml($project);
 
     print "Parsing XML\n";
-    parse_cosm_xml( $project, $list );
+    parse_cosm_xml( $project, $list, $jgi_id );
 }
 elsif ( defined $options{a} ) {
     $project = 'algae';
@@ -166,7 +174,8 @@ sub download_xml {
                 "\tWarning: $portal\_files.xml is older than 10 days. You may wish to delete it and try again.\n";
         }
         else {
-            print "$portal\_files.xml previously downloaded and less than 10 days ago. Continuing...\n";
+            print
+                "$portal\_files.xml previously downloaded and less than 10 days ago. Continuing...\n";
         }
     }
     else {
@@ -222,7 +231,7 @@ sub parse_phytozome_xml {
 ## Parse the XML DOM
 sub parse_cosm_xml {
 
-    my ( $portal, $list ) = @_;
+    my ( $portal, $list, $jgi_id ) = @_;
 
     my $xml_file = "$portal\_files.xml";
 
@@ -267,12 +276,10 @@ sub parse_cosm_xml {
     }
 
     if ( $list eq "true" ) {
-
         genome_list( \%results, $portal );
     }
-
     else {
-        download_files_cosms( \%results, $portal );
+        download_files_cosms( \%results, $portal, $jgi_id );
     }
 }
 
@@ -298,18 +305,24 @@ sub genome_list {
 sub download_files_cosms {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
+    my $jgi_id       = $_[2];
 
-    foreach ( sort keys %list_of_urls ) {
-        my $taxa     = $_;
-        my $url      = $list_of_urls{$_};
-        my $filename = ( split /\//, $url )[4];
+    if ( $jgi_id ne 'false' ) {
+        foreach ( sort keys %list_of_urls ) {
+            my $taxa     = $_;
+            my $url      = $list_of_urls{$_};
+            my $filename = ( split /\//, $url )[4];
 
-        print "\tRetrieving: $filename\n";
+            print "\tRetrieving: $filename\n";
 
-        run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename",
-            "$quiet"
-        );
+            run_cmd(
+                "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename",
+                "$quiet"
+            );
+        }
+    }
+    else {
+        
     }
 }
 
