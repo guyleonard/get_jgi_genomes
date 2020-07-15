@@ -11,23 +11,26 @@ use open qw(:std :utf8);
 use utf8;
 use XML::LibXML;
 
-use Data::Dumper;
-
-my $list    = 'false';
+#
+# Global Variables
+#
 my $cookies = 'cookies';
+my $jgi_id  = 'false';
+my $list    = 'false';
+my $quiet   = 'false';
 my ( $username, $password, $outdir, $project );
-my $quiet  = 'false';
-my $jgi_id = 'false';
 
+#
+# Getopt
+#
 my %options = ();
 getopts( 'u:p:c:fam:P:i:lhq', \%options ) or display_help();
 
 # Help
 if ( $options{h} ) { display_help(); }
 
-if ( $options{q} ) {
-    $quiet = "true";
-}
+# Quiet
+if ( $options{q} ) { $quiet = "true"; }
 
 # Signin Options / Cookies
 if ( defined $options{u} && defined $options{p} ) {
@@ -37,93 +40,75 @@ if ( defined $options{u} && defined $options{p} ) {
 }
 elsif ( defined $options{c} ) {
     $cookies = $options{c};
-    print "User supplied cookie, skipping signin process.\n";
+    print "INFO: User supplied cookie, skipping signin process.\n";
 }
 else {
     display_help();
 }
 
+# JGI ID
 if ( defined $options{i} ) {
     $jgi_id = "$options{i}";
 }
-else {
-    display_help();
-}
 
+# List Only
 if ( $options{l} ) {
     $list = "true";
-    print "\tOutput: List Only\n";
+    print "INFO: Output List Only\n";
 }
 
-# Download Project XML & Output Dir
+# Download Project XML & Create Output Dir
+# Fungi
 if ( defined $options{f} ) {
     $project = 'fungi';
 
-    print "User Selected: Mycocosm aka $project\n";
+    print "INFO: User Selected Mycocosm aka $project\n";
     download_xml($project);
 
-    print "Parsing XML\n";
+    print "INFO: Parsing XML\n";
     parse_cosm_xml( $project, $list, $jgi_id );
 }
+
+# Algae
 elsif ( defined $options{a} ) {
     $project = 'algae';
 
-    print "User Selected: Phycocosm aka $project\n";
+    print "INFO: User Selected Phycocosm aka $project\n";
     download_xml($project);
 
-    print "Parsing XML\n";
+    print "INFO: Parsing XML\n";
     parse_cosm_xml( $project, $list );
 }
+
+# Plants
 elsif ( defined $options{P} ) {
     $project = 'PhytozomeV' . "$options{P}";
 
-    print "User Selected: $project\n";
+    print "INFO: User Selected Phytozome aka $project\n";
     download_xml($project);
 
-    print "Parsing XML\n";
+    print "INFO: Parsing XML\n";
     parse_phytozome_xml( $project, $list );
 }
+
+# Animals
 elsif ( defined $options{m} ) {
     $project = 'MetazomeV' . "$options{m}";
 
-    print "User Selected: $project\n";
+    print "INFO: User Selected Metazome aka $project\n";
     download_xml($project);
 
-    print "Parsing XML\n";
+    print "INFO: Parsing XML\n";
     parse_phytozome_xml( $project, $list );
 }
 else {
-    print "No Output Directory or Group Project ID\n";
+    print "WARN: You must define a portal/cosm.\n";
     exit(1);
 }
 
-sub display_help {
-    print "Usage:\n";
-    print
-        "  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-i) (-l) (-q)\n\n";
-    print "Required:\n";
-    print "\t-u <username>\n";
-    print "\t-p <password>\n";
-    print "or\n";
-    print "\t-c <cookie file>\n";
-    print "Database Options:\n";
-    print "\t-f Mycocosm aka fungi\n";
-    print "\t-a Phycocosm aka algae\n";
-    print "\t-P <version> PhytozomeV aka plants\n";
-    print "\t-m <metazome> MetazomeV aka metazoans\n";
-    print "JGI ID:";
-    print "\t-i <id> JGI ID of Genome Project\n";
-    print "Listing:";
-    print "\t-l list only, no downloads\n";
-
-    exit(1);
-}
-
-# JGI insist that we log in, that's okay. You should be aware that different genome portals
-# may have different licenses etc...it's up to the individual user to be aware of these.
-# So, let's login to the DOE JGI SSO
-# We can do this with curl and our username/password
-# This saves a cookie file for use later, it will need refreshing.
+#
+# Signon & Cookies
+#
 sub signin {
 
     my $user = shift;
@@ -132,7 +117,7 @@ sub signin {
     if ( -e 'cookies' ) {
         if ( -A 'cookies' > 1 || -M 'cookies' > 1 ) {
             print
-                "It has been longer than one day since your last logged in.\nAttempting to login again...\n";
+                "INFO: It has been longer than one day since your last login.\nAttempting to login again...\n";
             run_cmd(
                 "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
                 "$quiet"
@@ -140,11 +125,12 @@ sub signin {
             check_cookie();
         }
         else {
-            print "You are already logged in...please use the '-c' option.\n";
+            print
+                "INFO: You are already logged in...please use the '-c' option.\n";
         }
     }
     else {
-        print "Attempting to login...\n";
+        print "INFO: Attempting to login...\n";
         run_cmd(
             "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c cookies > /dev/null",
             "$quiet"
@@ -153,8 +139,31 @@ sub signin {
     }
 }
 
-# Now let's use curl again with our cookie signon and download the XML file
-# which is where JGI stores the information of each project and its associated files
+sub check_cookie {
+
+    my $logged_in = 'flase';
+
+    open my $cookie, '<', "cookies" or die "Cannot open cookies file: $!\n";
+    while (<$cookie>) {
+        my $line = $_;
+        if ( $line =~ m/TRUE/ ) {
+            $logged_in = 'true';
+        }
+    }
+
+    if ( $logged_in eq 'true' ) {
+        print "INFO: Login Successfull!\n";
+    }
+    else {
+        print
+            "WARN: There was a problem with your login attempt. Please Try again.\n";
+        exit(1);
+    }
+}
+
+#
+# XML Download
+#
 sub download_xml {
     my $portal = shift;
 
@@ -185,6 +194,9 @@ sub download_xml {
     run_cmd( "sed -i \'s/&quot;//g\' $portal\_files.xml", "true" );
 }
 
+#
+# XML Parsing
+#
 sub parse_phytozome_xml {
 
     my ( $portal, $list ) = @_;
@@ -222,6 +234,7 @@ sub parse_phytozome_xml {
     }
 
     else {
+        genome_list_phytozome( \%results, $portal );
         download_files_phytozome( \%results, $portal );
     }
 }
@@ -277,10 +290,14 @@ sub parse_cosm_xml {
         genome_list( \%results, $portal );
     }
     else {
+        genome_list( \%results, $portal );
         download_files_cosms( \%results, $portal, $jgi_id );
     }
 }
 
+#
+# Generate List Output
+#
 sub genome_list {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
@@ -300,6 +317,26 @@ sub genome_list {
     close($fileout);
 }
 
+sub genome_list_phytozome {
+    my %list_of_urls = %{ $_[0] };
+    my $portal       = $_[1];
+
+    my $filename = "$portal\/$portal\_list.txt";
+    open my $fileout, '>>', $filename;
+
+    foreach ( sort keys %list_of_urls ) {
+        my $taxa = $_;
+        my $url  = $list_of_urls{$_};
+
+        print $fileout "$taxa\thttps://genome.jgi.doe.gov$url\n";
+    }
+
+    close($fileout);
+}
+
+#
+# Download Files
+#
 sub download_files_cosms {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
@@ -320,25 +357,8 @@ sub download_files_cosms {
         }
     }
     else {
-        
+
     }
-}
-
-sub genome_list_phytozome {
-    my %list_of_urls = %{ $_[0] };
-    my $portal       = $_[1];
-
-    my $filename = "$portal\/$portal\_list.txt";
-    open my $fileout, '>>', $filename;
-
-    foreach ( sort keys %list_of_urls ) {
-        my $taxa = $_;
-        my $url  = $list_of_urls{$_};
-
-        print $fileout "$taxa\thttps://genome.jgi.doe.gov$url\n";
-    }
-
-    close($fileout);
 }
 
 sub download_files_phytozome {
@@ -359,28 +379,9 @@ sub download_files_phytozome {
     }
 }
 
-sub check_cookie {
-
-    my $logged_in = 'flase';
-
-    open my $cookie, '<', "cookies" or die "Cannot open cookies file: $!\n";
-    while (<$cookie>) {
-        my $line = $_;
-        if ( $line =~ m/TRUE/ ) {
-            $logged_in = 'true';
-        }
-    }
-
-    if ( $logged_in eq 'true' ) {
-        print "Login Successfull!\n";
-    }
-    else {
-        print
-            "There was a problem with your login attempt. Please Try again.\n";
-        exit(1);
-    }
-}
-
+#
+# Helpers
+#
 sub run_cmd {
     my ( $cmd, $quiet ) = @_;
     msg("Running: $cmd") unless $quiet eq "true";
@@ -394,4 +395,29 @@ sub error {
 
 sub msg {
     print STDERR "@_\n";
+}
+
+#
+# Help
+#
+sub display_help {
+    print "Usage:\n";
+    print
+        "  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-i) (-l) (-q)\n\n";
+    print "Required:\n";
+    print "\t-u <username>\n";
+    print "\t-p <password>\n";
+    print "or\n";
+    print "\t-c <cookie file>\n";
+    print "Database Options:\n";
+    print "\t-f Mycocosm aka fungi\n";
+    print "\t-a Phycocosm aka algae\n";
+    print "\t-P <version> PhytozomeV aka plants\n";
+    print "\t-m <metazome> MetazomeV aka metazoans\n";
+    print "JGI ID:";
+    print "\t-i <id> JGI ID of Genome Project\n";
+    print "Other:";
+    print "\t-l list only, no downloads\n";
+
+    exit(1);
 }
