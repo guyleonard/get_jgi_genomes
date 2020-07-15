@@ -21,6 +21,7 @@ my ( $algae, $fungi, $metazoa, $plants );
 my $jgi_id = 'false';
 my $list   = 'false';
 my $quiet  = 'false';
+my ( $cds, $gff );
 
 #
 # Getopt
@@ -34,9 +35,12 @@ GetOptions(
     'metazoa|m=s' => \$metazoa,
     'plants|P=s'  => \$plants,
     'id|i=s'      => \$jgi_id,
+    'cds|C'       => sub { $cds = 'cds' },
+    'gff|g'       => sub { $gff = 'gff' },
     'list|l'      => sub { $list = 'true' },
     'quiet|q'     => sub { $quiet = 'true' },
-    'version|v'   => sub { print "get_jgi_genomes Version: $VERSION\n"; exit(0) },
+    'version|v' =>
+        sub { print "get_jgi_genomes Version: $VERSION\n"; exit(0) },
     'help|h' => sub { display_help() }
 );
 
@@ -363,7 +367,7 @@ sub download_files_cosm {
         print "\tRetrieving: $filename\n";
 
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename",
+            "curl --silent 'https://genome.jgi.doe.gov$url' -b signon.cookie > $portal\/$filename",
             "$quiet"
         );
     }
@@ -372,16 +376,34 @@ sub download_files_cosm {
 sub download_files_zome {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
+    my $subdir       = 'pep';
 
     foreach ( sort keys %list_of_urls ) {
         my $taxa     = $_;
         my $url      = $list_of_urls{$_};
         my $filename = ( split /\//, $url )[9];
 
-        print "\tRetrieving: $filename\n";
+        # if ( defined $gff && $gff eq 'gff' ) {
 
+        #     $url =~ s/protein.fa.gz/gene.gff3.gz/ig;
+        #     $filename =~ s/protein.fa.gz/gene.gff3.gz/ig;
+        #     $subdir = 'gff';
+        #     make_path("$portal\/$subdir");
+        # }
+        # elsif ( defined $cds && $cds eq 'cds' ) {
+        #     $url =~ s/protein/cds/ig;
+        #     $filename =~ s/protein/cds/ig;
+        #     $subdir = 'cds';
+        #     make_path("$portal\/$subdir");
+        # }
+        # else {
+        make_path("$portal\/$subdir");
+
+        #}
+
+        print "\tRetrieving: $filename\n";
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov$url' -b cookies > $portal\/$filename",
+            "curl --silent 'https://genome.jgi.doe.gov$url' -b signon.cookie > $portal\/$subdir\/$filename",
             "$quiet"
         );
     }
