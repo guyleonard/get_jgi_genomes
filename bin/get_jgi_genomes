@@ -88,7 +88,7 @@ elsif ( defined $options{P} ) {
     download_xml($project);
 
     print "INFO: Parsing XML\n";
-    parse_phytozome_xml( $project, $list );
+    parse_zome_xml( $project, $list );
 }
 
 # Animals
@@ -99,7 +99,7 @@ elsif ( defined $options{m} ) {
     download_xml($project);
 
     print "INFO: Parsing XML\n";
-    parse_phytozome_xml( $project, $list );
+    parse_zome_xml( $project, $list );
 }
 else {
     print "WARN: You must define a portal/cosm.\n";
@@ -197,49 +197,7 @@ sub download_xml {
 #
 # XML Parsing
 #
-sub parse_phytozome_xml {
-
-    my ( $portal, $list ) = @_;
-
-    my $xml_file = "$portal\_files.xml";
-
-    my $portal_xml
-        = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
-
-    my $query = '//folder[@name="annotation"]';
-
-    my %results;
-
-    my $search = 'protein';
-    if ( $portal =~ m/metazome/i ) { $search = 'peptide' }
-
-    for my $file ( $portal_xml->findnodes($query) ) {
-        for my $file_props ( $file->findnodes('//file') ) {
-
-            my $url = $file_props->getAttribute('url');
-            my $label = ( split /\//, $url )[9];
-            if ( $url =~ m/.*$search\.fa\.gz/ ) {
-                $results{"$label"} = "$url";
-            }
-        }
-    }
-
-    if ( !-d $portal ) {
-        make_path($portal);
-    }
-
-    if ( $list eq "true" ) {
-
-        genome_list_phytozome( \%results, $portal );
-    }
-
-    else {
-        genome_list_phytozome( \%results, $portal );
-        download_files_phytozome( \%results, $portal );
-    }
-}
-
-## Parse the XML DOM
+# Mycocosm and Others
 sub parse_cosm_xml {
 
     my ( $portal, $list, $jgi_id ) = @_;
@@ -295,6 +253,49 @@ sub parse_cosm_xml {
     }
 }
 
+# Phytozome
+sub parse_zome_xml {
+
+    my ( $portal, $list ) = @_;
+
+    my $xml_file = "$portal\_files.xml";
+
+    my $portal_xml
+        = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
+
+    my $query = '//folder[@name="annotation"]';
+
+    my %results;
+
+    my $search = 'protein';
+    if ( $portal =~ m/metazome/i ) { $search = 'peptide' }
+
+    for my $file ( $portal_xml->findnodes($query) ) {
+        for my $file_props ( $file->findnodes('//file') ) {
+
+            my $url = $file_props->getAttribute('url');
+            my $label = ( split /\//, $url )[9];
+            if ( $url =~ m/.*$search\.fa\.gz/ ) {
+                $results{"$label"} = "$url";
+            }
+        }
+    }
+
+    if ( !-d $portal ) {
+        make_path($portal);
+    }
+
+    if ( $list eq "true" ) {
+
+        genome_list_zome ( \%results, $portal );
+    }
+
+    else {
+        genome_list_zome ( \%results, $portal );
+        download_files_zome( \%results, $portal );
+    }
+}
+
 #
 # Generate List Output
 #
@@ -317,7 +318,7 @@ sub genome_list {
     close($fileout);
 }
 
-sub genome_list_phytozome {
+sub genome_list_zome  {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
 
@@ -361,7 +362,7 @@ sub download_files_cosms {
     }
 }
 
-sub download_files_phytozome {
+sub download_files_zome {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
 
