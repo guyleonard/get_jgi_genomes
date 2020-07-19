@@ -37,11 +37,37 @@ NB - Point releases with the '-zomes', e.g. 12.1 do not seem to work, so please 
 
 XML files are automatically refreshed after 10 days, or if you delete the file and re-run your commands.
 
-## Notes
-### Phycocosm
+Output is in your local folder within a directory named after the portal and the type of data you requested.
+
+## Examples
+To login:
+```bash
+./bin/get_jgi_genomes -u your.email@address.com -p y0uR_P@$$W0r4
+```
+
+To download a list of all protein files from Mycocosm after you have logged in:
+```bash
+./bin/get_jgi_genomes -c signon.cookie -f -l
+```
+
+To download all CDS files from Phycocosm after you have logged in:
+```bash
+./bin/get_jgi_genomes -c signon.cookie -a -C
+```
+
+To download all assembly files from Phytozome V12 after you have logged in:
+```bash
+./bin/get_jgi_genomes -c signon.cookie -P 12 -A
+```
+
+# Notes
+## Phytozome
+All versions up to v12 work with this script, the newer V13 available at "https://phytozome-next.jgi.doe.gov/" has not been added (yet).
+
+## Phycocosm
 As of writing (July 2020) the Phycocosm portal lists 77 genomes available, however not all of these are available in the XML. About 37 are available, the others - mostly archaeplastida - are available from Phytozome.
 
-### Metazome
+## Metazome
 Metazome  does not seem to be maintained and occasionally has file download issues, generally it is very slow.
 
 # Other Genome Download Tools
