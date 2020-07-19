@@ -280,36 +280,40 @@ sub parse_zome_xml {
 
     my $portal = shift;
     my %results;
-    my $search;
+    my $url_filter;
+    my $query
+        = "//organismDownloads[\@name=\"$portal\"]";
 
     my $xml_file = "$portal\_files.xml";
 
     if ( !-z $xml_file ) {
+
         my $portal_xml
             = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-        my $query = '//folder[@name="annotation"]';
+        $query = $query . '//folder[@name="annotation"]';
 
         if ( defined $gff && $gff eq 'gff' ) {
-            $search = 'gene.gff3';
+            $url_filter = 'gene.gff3.gz';
             $portal = "$portal\/gff";
         }
         elsif ( defined $cds && $cds eq 'cds' ) {
-            $search = 'cds.fa';
+            $url_filter = 'cds.fa.gz';
             $portal = "$portal\/cds";
         }
         else {
-            $search = 'protein.fa';
+            $url_filter = 'protein.fa.gz';
             $portal = "$portal\/pep";
-            if ( $portal =~ m/metazome/i ) { $search = 'peptide.fa' }
+            if ( $portal =~ m/metazome/i ) { $url_filter = 'peptide.fa.gz' }
         }
 
         for my $file ( $portal_xml->findnodes($query) ) {
-            for my $file_props ( $file->findnodes('//file') ) {
+            for my $file_props ( $file->findnodes('./file') ) {
 
                 my $url = $file_props->getAttribute('url');
                 my $label = ( split /\//, $url )[9];
-                if ( $url =~ m/.*$search\.gz/ ) {
+
+                if ( $url =~ m/$url_filter/ ) {
                     $results{"$label"} = "$url";
                 }
             }
@@ -349,7 +353,7 @@ sub genome_list_cosm {
     foreach ( sort keys %list_of_urls ) {
         my $taxa = $_;
         my $url  = $list_of_urls{$_};
-        my $Jgi_id;
+        my $jgi_id;
 
         if ( $url =~ m/.*ext-api.*/ ) {
             $jgi_id = ( split /\//,  $url )[5];
@@ -377,8 +381,9 @@ sub genome_list_zome {
     foreach ( sort keys %list_of_urls ) {
         my $taxa = $_;
         my $url  = $list_of_urls{$_};
+        my $jgi_id = ( split /\_/,       $taxa )[0];
 
-        print $fileout "$taxa\thttps://genome.jgi.doe.gov$url\n";
+        print $fileout "$taxa\t$jgi_id\thttps://genome.jgi.doe.gov$url\n";
     }
 
     close($fileout);
