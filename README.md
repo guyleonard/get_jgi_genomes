@@ -1,5 +1,5 @@
 # Get JGI Genomes!
-Download all the available Amino Acid sequences from the genomes contained within JGI's various -zomes and -cosms.
+Download files from the genomes contained within JGI's various -zomes and -cosms.
 
 # Usage
 Login to JGI with your username and password (-u and -p) to generate the required 'cookie' file to allow your downloads to process. This will work for your current session only, and expires daily.
