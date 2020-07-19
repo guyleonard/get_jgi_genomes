@@ -11,6 +11,8 @@ use open qw(:std :utf8);
 use utf8;
 use XML::LibXML;
 
+use Data::Dumper;
+
 our $VERSION = "0.1";
 
 #
@@ -206,6 +208,9 @@ sub parse_cosm_xml {
 
     my $portal = shift;
     my %results;
+    my $url_filter;
+    my $query
+        = "//organismDownloads[\@name=\"$portal\"]//folder[\@name=\"Files\"]";
 
     my $xml_file = "$portal\_files.xml";
 
@@ -214,33 +219,39 @@ sub parse_cosm_xml {
         my $portal_xml
             = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-        my $query
-            = '/organismDownloads[@name="'
-            . $portal
-            . '"]/folder[@name="Files"]/folder[@name="Annotation"]/folder[@name="Filtered Models (best)"]/folder[@name="Proteins"]';
+        $query
+            = $query
+            . "//folder[\@name=\"Annotation\"]//folder[\@name=\"Filtered Models (best)\"]";
+
+        if ( defined $gff && $gff eq 'gff' ) {
+            $query      = $query . "//folder[\@name=\"Genes\"]";
+            $url_filter = qr/(.*gff3.gz|.*gff.gz)/;
+            $portal     = "$portal\/gff";
+        }
+        elsif ( defined $cds && $cds eq 'cds' ) {
+            $query      = $query . "//folder[\@name=\"CDS\"]";
+            $url_filter = qr/(.*fasta.gz)/i;
+            $portal     = "$portal\/cds";
+        }
+        else {
+            $query      = $query . "//folder[\@name=\"Proteins\"]";
+            $url_filter = qr/(.*fasta.gz)/;
+            $portal     = "$portal\/pep";
+        }
 
         for my $file ( $portal_xml->findnodes($query) ) {
-            for my $file_props ( $file->findnodes('./*') ) {
+            for my $file_props ( $file->findnodes('./file') ) {
 
-                my $label = $file_props->getAttribute('label');
                 my $url   = $file_props->getAttribute('url');
+                my $label = $file_props->getAttribute('label');
 
-                # if the files don't look like this, then we don't want them
-                # Armlut1_GeneCatalog_proteins_20180531.aa.fasta.gz
-                # *proteins.fasta.gz
-                # we also remove any files with some modifiers
-                # then push them to a hash to remove genomes with two sets
-                # of proteins.
-                # it's a bit of a fudge, but the xml makes no effort to define
-                # the set of AAs that are representative of the genome
-
-                if ( $url =~ m/.*\_GeneCatalog_proteins_\d+\.aa\.fasta.gz/ ) {
-                    if ( $url !~ m/primary|secondary|alleles|diploid|old/ ) {
+                if ( $url =~ m/$url_filter/i ) {
+                    if ( $url
+                        !~ m/primary|secondary|alleles|diploid|old|promoters|unmapped/
+                        )
+                    {
                         $results{"$label"} = "$url";
                     }
-                }
-                elsif ( $url =~ m/.*proteins\.fasta\.gz/ ) {
-                    $results{"$label"} = "$url";
                 }
             }
         }
@@ -259,6 +270,7 @@ sub parse_cosm_xml {
     }
     else {
         genome_list_cosm( \%results, $portal );
+
         download_files_cosm( \%results, $portal );
     }
 }
@@ -319,6 +331,7 @@ sub parse_zome_xml {
 
     else {
         genome_list_zome( \%results, $portal );
+
         download_files_zome( \%results, $portal );
     }
 }
@@ -331,15 +344,24 @@ sub genome_list_cosm {
     my $portal       = $_[1];
 
     my $filename = "$portal\_list.txt";
-    open my $fileout, '>>', $filename;
+    open my $fileout, '>', $filename;
 
     foreach ( sort keys %list_of_urls ) {
-        my $taxa   = $_;
-        my $url    = $list_of_urls{$_};
-        my @jgi_id = split /\//, $url;
+        my $taxa = $_;
+        my $url  = $list_of_urls{$_};
+        my $Jgi_id;
+
+        if ( $url =~ m/.*ext-api.*/ ) {
+            $jgi_id = ( split /\//,  $url )[5];
+            $url    = ( split /=\//, $url )[1];
+        }
+        else {
+            $jgi_id = ( split /\//,       $url )[2];
+            $url    = ( split /portal\//, $url )[1];
+        }
 
         print $fileout
-            "$taxa\t$jgi_id[2]\thttps://genome.jgi.doe.gov/portal/$jgi_id[2]/download/$jgi_id[4]\n";
+            "$taxa\t$jgi_id\thttps://genome.jgi.doe.gov/portal/$url\n";
     }
 
     close($fileout);
@@ -350,7 +372,7 @@ sub genome_list_zome {
     my $portal       = $_[1];
 
     my $filename = "$portal\_list.txt";
-    open my $fileout, '>>', $filename;
+    open my $fileout, '>', $filename;
 
     foreach ( sort keys %list_of_urls ) {
         my $taxa = $_;
@@ -369,16 +391,34 @@ sub download_files_cosm {
     my %list_of_urls = %{ $_[0] };
     my $portal       = $_[1];
     my $jgi_id       = $_[2];
+    my $filename;
 
     foreach ( sort keys %list_of_urls ) {
-        my $taxa     = $_;
-        my $url      = $list_of_urls{$_};
-        my $filename = ( split /\//, $url )[4];
+        my $taxa = $_;
+        my $url  = $list_of_urls{$_};
+        my $Jgi_id;
+
+        if ( $url =~ m/.*ext-api.*/ ) {
+            $jgi_id = ( split /\//,  $url )[5];
+            $url    = ( split /=\//, $url )[1];
+        }
+        else {
+            $jgi_id = ( split /\//,       $url )[2];
+            $url    = ( split /portal\//, $url )[1];
+        }
+
+        if ( $portal =~ /mycocosm|fungi/i ) {
+
+            $filename = ( split /\//, $url )[4];
+        }
+        else {
+            $filename = ( split /\//, $url )[2];
+        }
 
         print "\tRetrieving: $filename\n";
 
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov$url' -b signon.cookie > $portal\/$filename",
+            "curl --silent 'https://genome.jgi.doe.gov/portal/$url' -b signon.cookie > $portal\/$filename",
             "$quiet"
         );
     }
@@ -393,23 +433,6 @@ sub download_files_zome {
         my $taxa     = $_;
         my $url      = $list_of_urls{$_};
         my $filename = ( split /\//, $url )[9];
-
-        # if ( defined $gff && $gff eq 'gff' ) {
-
-        #     $url =~ s/protein.fa.gz/gene.gff3.gz/ig;
-        #     $filename =~ s/protein.fa.gz/gene.gff3.gz/ig;
-        #     $subdir = 'gff';
-        #     make_path("$portal\/$subdir");
-        # }
-        # elsif ( defined $cds && $cds eq 'cds' ) {
-        #     $url =~ s/protein/cds/ig;
-        #     $filename =~ s/protein/cds/ig;
-        #     $subdir = 'cds';
-        #     make_path("$portal\/$subdir");
-        # }
-        # else {
-        #make_path("$portal\/$subdir");
-        #}
 
         print "\tRetrieving: $filename\n";
         run_cmd(

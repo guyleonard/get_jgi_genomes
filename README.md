@@ -23,6 +23,9 @@ Options:
 Listing:
   -l list only, no downloads
 ```
+## Notes
+### Phycocosm
+As of writing (July 2020) the Phycocosm portal lists 77 genomes available, however not all of these are available in the XML. About 37 are available, the others - mostly archaeplastida - are available from Phytozome.
 
 # Other Genome Download Tools
  * [Get Ensembl Genomes](https://github.com/guyleonard/get_ensembl_genomes)
