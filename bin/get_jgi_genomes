@@ -23,24 +23,26 @@ my ( $algae, $fungi, $metazoa, $plants );
 my $jgi_id = 'false';
 my $list   = 'false';
 my $quiet  = 'false';
-my ( $cds, $gff );
+my ( $cds, $gff, $transcripts, $assembly );
 
 #
 # Getopt
 #
 GetOptions(
-    'user|u=s'    => \$username,
-    'pass|p=s'    => \$password,
-    'cookies|c'   => \$cookies,
-    'algae|a'     => \$algae,
-    'fungi|f'     => \$fungi,
-    'metazoa|m=s' => \$metazoa,
-    'plants|P=s'  => \$plants,
-    'id|i=s'      => \$jgi_id,
-    'cds|C'       => sub { $cds = 'cds' },
-    'gff|g'       => sub { $gff = 'gff' },
-    'list|l'      => sub { $list = 'true' },
-    'quiet|q'     => sub { $quiet = 'true' },
+    'user|u=s'      => \$username,
+    'pass|p=s'      => \$password,
+    'cookies|c'     => \$cookies,
+    'algae|a'       => \$algae,
+    'fungi|f'       => \$fungi,
+    'metazoa|m=s'   => \$metazoa,
+    'plants|P=s'    => \$plants,
+    'id|i=s'        => \$jgi_id,
+    'cds|C'         => sub { $cds = 'cds' },
+    'gff|g'         => sub { $gff = 'gff' },
+    'transcripts|t' => sub { $transcripts = 'transcripts' },
+    'assembly|A'    => sub { $assembly = 'assembly' },
+    'list|l'        => sub { $list = 'true' },
+    'quiet|q'       => sub { $quiet = 'true' },
     'version|v' =>
         sub { print "get_jgi_genomes Version: $VERSION\n"; exit(0) },
     'help|h' => sub { display_help() }
@@ -219,24 +221,40 @@ sub parse_cosm_xml {
         my $portal_xml
             = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-        $query
-            = $query
-            . "//folder[\@name=\"Annotation\"]//folder[\@name=\"Filtered Models (best)\"]";
+        if ( defined $assembly && $assembly eq 'assembly' ) {
 
-        if ( defined $gff && $gff eq 'gff' ) {
-            $query      = $query . "//folder[\@name=\"Genes\"]";
-            $url_filter = qr/(.*gff3.gz|.*gff.gz)/;
-            $portal     = "$portal\/gff";
-        }
-        elsif ( defined $cds && $cds eq 'cds' ) {
-            $query      = $query . "//folder[\@name=\"CDS\"]";
+            $query
+                = $query
+                . "//folder[\@name=\"Assembly\"]//folder[\@name=\"Assembled scaffolds (unmasked)\"]";
             $url_filter = qr/(.*fasta.gz)/i;
-            $portal     = "$portal\/cds";
+            $portal     = "$portal\/assembly";
         }
         else {
-            $query      = $query . "//folder[\@name=\"Proteins\"]";
-            $url_filter = qr/(.*fasta.gz)/;
-            $portal     = "$portal\/pep";
+
+            $query
+                = $query
+                . "//folder[\@name=\"Annotation\"]//folder[\@name=\"Filtered Models (best)\"]";
+
+            if ( defined $gff && $gff eq 'gff' ) {
+                $query      = $query . "//folder[\@name=\"Genes\"]";
+                $url_filter = qr/(.*gff3.gz|.*gff.gz)/;
+                $portal     = "$portal\/gff";
+            }
+            elsif ( defined $cds && $cds eq 'cds' ) {
+                $query      = $query . "//folder[\@name=\"CDS\"]";
+                $url_filter = qr/(.*fasta.gz)/i;
+                $portal     = "$portal\/cds";
+            }
+            elsif ( defined $transcripts && $transcripts eq 'transcripts' ) {
+                $query      = $query . "//folder[\@name=\"Transcripts\"]";
+                $url_filter = qr/(.*fasta.gz)/i;
+                $portal     = "$portal\/transcripts";
+            }
+            else {
+                $query      = $query . "//folder[\@name=\"Proteins\"]";
+                $url_filter = qr/(.*fasta.gz)/;
+                $portal     = "$portal\/pep";
+            }
         }
 
         for my $file ( $portal_xml->findnodes($query) ) {
@@ -281,8 +299,7 @@ sub parse_zome_xml {
     my $portal = shift;
     my %results;
     my $url_filter;
-    my $query
-        = "//organismDownloads[\@name=\"$portal\"]";
+    my $query = "//organismDownloads[\@name=\"$portal\"]";
 
     my $xml_file = "$portal\_files.xml";
 
@@ -291,20 +308,34 @@ sub parse_zome_xml {
         my $portal_xml
             = XML::LibXML->load_xml( location => $xml_file, no_blanks => 1 );
 
-        $query = $query . '//folder[@name="annotation"]';
+        if ( defined $assembly && $assembly eq 'assembly' ) {
 
-        if ( defined $gff && $gff eq 'gff' ) {
-            $url_filter = 'gene.gff3.gz';
-            $portal = "$portal\/gff";
-        }
-        elsif ( defined $cds && $cds eq 'cds' ) {
-            $url_filter = 'cds.fa.gz';
-            $portal = "$portal\/cds";
+            $query      = $query . "//folder[\@name=\"assembly\"]";
+            $url_filter = '.fa.gz';
+            $portal     = "$portal\/assembly";
         }
         else {
-            $url_filter = 'protein.fa.gz';
-            $portal = "$portal\/pep";
-            if ( $portal =~ m/metazome/i ) { $url_filter = 'peptide.fa.gz' }
+            $query = $query . '//folder[\@name=\"annotation\"]';
+
+            if ( defined $gff && $gff eq 'gff' ) {
+                $url_filter = 'gene.gff3.gz';
+                $portal     = "$portal\/gff";
+            }
+            elsif ( defined $cds && $cds eq 'cds' ) {
+                $url_filter = 'cds.fa.gz';
+                $portal     = "$portal\/cds";
+            }
+            elsif ( defined $transcripts && $transcripts eq 'transcripts' ) {
+                $url_filter = 'transcript.fa.gz';
+                $portal     = "$portal\/transcripts";
+            }
+            else {
+                $url_filter = 'protein.fa.gz';
+                $portal     = "$portal\/pep";
+                if ( $portal =~ m/metazome/i ) {
+                    $url_filter = 'peptide.fa.gz';
+                }
+            }
         }
 
         for my $file ( $portal_xml->findnodes($query) ) {
@@ -379,9 +410,9 @@ sub genome_list_zome {
     open my $fileout, '>', $filename;
 
     foreach ( sort keys %list_of_urls ) {
-        my $taxa = $_;
-        my $url  = $list_of_urls{$_};
-        my $jgi_id = ( split /\_/,       $taxa )[0];
+        my $taxa   = $_;
+        my $url    = $list_of_urls{$_};
+        my $jgi_id = ( split /\_/, $taxa )[0];
 
         print $fileout "$taxa\t$jgi_id\thttps://genome.jgi.doe.gov$url\n";
     }
@@ -479,19 +510,25 @@ sub VERSION_MESSAGE {
 sub display_help {
     print "Usage:\n";
     print
-        "  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-i) (-l) (-q)\n\n";
+        "  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-i) (-l) (-A) (-C) (-g) (-t) (-q)\n\n";
     print "Required:\n";
     print "\t-u <username>\n";
     print "\t-p <password>\n";
     print "or\n";
     print "\t-c <cookie file>\n";
-    print "Database Options:\n";
+    print "Portal Choice:\n";
     print "\t-f Mycocosm aka fungi\n";
     print "\t-a Phycocosm aka algae\n";
     print "\t-P <version> PhytozomeV aka plants\n";
-    print "\t-m <metazome> MetazomeV aka metazoans\n";
-    print "JGI ID:";
+    print "\t-m <version> MetazomeV aka metazoans\n";
+    print "Portal File Options:\n";
+    print "\t-A get assembly\n";
+    print "\t-C get CDS\n";
+    print "\t-g get GFF\n";
+    print "\t-t get transcripts\n";
+    print "JGI Taxa ID:\n";
     print "\t-i <id> JGI ID of Genome Project\n";
-    print "Other:";
+    print "Other:\n";
     print "\t-l list only, no downloads\n";
+
 }
