@@ -20,9 +20,9 @@ our $VERSION = "0.1";
 #
 my ( $username, $password, $cookies );
 my ( $algae, $fungi, $metazoa, $plants );
-my $jgi_id = 'false';
-my $list   = 'false';
-my $quiet  = 'false';
+my $jgi_tax_id = 'false';
+my $list       = 'false';
+my $quiet      = 'false';
 my ( $cds, $gff, $transcripts, $assembly );
 
 #
@@ -36,7 +36,7 @@ GetOptions(
     'fungi|f'       => \$fungi,
     'metazoa|m=s'   => \$metazoa,
     'plants|P=s'    => \$plants,
-    'id|i=s'        => \$jgi_id,
+    'id|i=s'        => \$jgi_tax_id,
     'cds|C'         => sub { $cds = 'cds' },
     'gff|g'         => sub { $gff = 'gff' },
     'transcripts|t' => sub { $transcripts = 'transcripts' },
@@ -76,7 +76,7 @@ sub portal {
         download_xml($project);
 
         print "INFO: Parsing XML\n";
-        parse_cosm_xml($project);
+        parse_cosm_xml( $project, $jgi_tax_id );
     }
 
     # Algae
@@ -87,7 +87,7 @@ sub portal {
         download_xml($project);
 
         print "INFO: Parsing XML\n";
-        parse_cosm_xml($project);
+        parse_cosm_xml( $project, $jgi_tax_id );
     }
 
     # Plants
@@ -208,7 +208,8 @@ sub download_xml {
 # Mycocosm and Algae
 sub parse_cosm_xml {
 
-    my $portal = shift;
+    my $portal     = shift;
+    my $jgi_tax_id = shift;
     my %results;
     my $url_filter;
     my $query
@@ -282,13 +283,21 @@ sub parse_cosm_xml {
         make_path($portal);
     }
 
-    if ( $list eq 'true' ) {
+    if ( $jgi_tax_id ne 'false' ) {
+
         genome_list_cosm( \%results, $portal );
+        download_single_taxa( $jgi_tax_id, $portal );
     }
     else {
-        genome_list_cosm( \%results, $portal );
 
-        download_files_cosm( \%results, $portal );
+        if ( $list eq 'true' ) {
+            genome_list_cosm( \%results, $portal );
+        }
+        else {
+            genome_list_cosm( \%results, $portal );
+
+            download_files_cosm( \%results, $portal );
+        }
     }
 }
 
@@ -314,7 +323,7 @@ sub parse_zome_xml {
             $portal     = "$portal\/assembly";
         }
         else {
-            $query = $query . '//folder[\@name=\"annotation\"]';
+            $query = $query . "//folder[\@name=\"annotation\"]";
 
             if ( defined $gff && $gff eq 'gff' ) {
                 $url_filter = 'gene.gff3.gz';
@@ -358,15 +367,22 @@ sub parse_zome_xml {
         make_path($portal);
     }
 
-    if ( $list eq 'true' ) {
+    if ( $jgi_tax_id ne 'false' ) {
 
         genome_list_zome( \%results, $portal );
+        download_single_taxa( $jgi_tax_id, $portal );
     }
-
     else {
-        genome_list_zome( \%results, $portal );
+        if ( $list eq 'true' ) {
 
-        download_files_zome( \%results, $portal );
+            genome_list_zome( \%results, $portal );
+        }
+
+        else {
+            genome_list_zome( \%results, $portal );
+
+            download_files_zome( \%results, $portal );
+        }
     }
 }
 
@@ -409,8 +425,9 @@ sub genome_list_zome {
     open my $fileout, '>', $filename;
 
     foreach ( sort keys %list_of_urls ) {
-        my $taxa   = $_;
-        my $url    = $list_of_urls{$_};
+        my $taxa = $_;
+        my $url  = $list_of_urls{$_};
+
         my $jgi_id = ( split /\_/, $taxa )[0];
 
         print $fileout "$taxa\t$jgi_id\thttps://genome.jgi.doe.gov$url\n";
@@ -420,7 +437,50 @@ sub genome_list_zome {
 }
 
 #
-# Download Files
+# Download Single Taxa's Files
+#
+sub download_single_taxa {
+
+    my $jgi_tax_id = shift;
+    my $portal     = shift;
+
+    my $list = "$portal\_list.txt";
+
+    print "Attempting to find: $jgi_tax_id from $portal\_list.txt\n";
+
+    open( my $fh, '<', $list )
+        or die "Could not open file '$list' $!";
+
+    while ( my $line = <$fh> ) {
+
+        chomp($line);
+        my $jgi_id = ( split /\t/, $line )[1];
+
+        if ( $jgi_id eq $jgi_tax_id ) {
+
+            my $filename;
+            my $url = ( split /\t/, $line )[2];
+
+            if ( $portal =~ /fungi|phycocosm/ ) {
+                $filename = ( split /\t/, $line )[2];
+                $filename = ( split /\//, $filename )[6];
+            }
+            elsif ( $portal =~ /phytozome|metazome/i ) {
+                $filename = ( split /\t/, $line )[0];
+            }
+
+            print "\tRetrieving: $filename\n";
+
+            run_cmd(
+                "curl --silent '$url' -b signon.cookie > $portal\/$filename",
+                "$quiet"
+            );
+        }
+    }
+}
+
+#
+# Download All Files
 #
 sub download_files_cosm {
     my %list_of_urls = %{ $_[0] };
