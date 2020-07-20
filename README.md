@@ -60,6 +60,16 @@ To download all assembly files from Phytozome V12 after you have logged in:
 ./bin/get_jgi_genomes -c signon.cookie -P 12 -A
 ```
 
+To download proteins of 'Boleraceacapitata' from Phytozome V12 after you have logged in:
+```bash
+./bin/get_jgi_genomes -c signon.cookie -P 12 -i Boleraceacapitata
+```
+
+To download transcripts of 'Trire2' from Mycocosm after you have logged in:
+```bash
+./bin/get_jgi_genomes -c signon.cookie -f -i Trire2 -t
+```
+
 # Notes
 ## Phytozome
 All versions up to v12 work with this script, the newer V13 available at "https://phytozome-next.jgi.doe.gov/" has not been added (yet).
