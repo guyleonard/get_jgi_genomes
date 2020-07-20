@@ -226,7 +226,7 @@ sub parse_cosm_xml {
             $query
                 = $query
                 . "//folder[\@name=\"Assembly\"]//folder[\@name=\"Assembled scaffolds (unmasked)\"]";
-            $url_filter = qr/(.*fasta.gz)/i;
+            $url_filter = qr/(.*scaffolds.fasta.gz)/i;
             $portal     = "$portal\/assembly";
         }
         else {
@@ -259,13 +259,12 @@ sub parse_cosm_xml {
 
         for my $file ( $portal_xml->findnodes($query) ) {
             for my $file_props ( $file->findnodes('./file') ) {
-
                 my $url   = $file_props->getAttribute('url');
                 my $label = $file_props->getAttribute('label');
 
                 if ( $url =~ m/$url_filter/i ) {
                     if ( $url
-                        !~ m/primary|secondary|alleles|diploid|old|promoters|unmapped/
+                        !~ m/primary|secondary|alleles|diploid|promoters|unmapped/
                         )
                     {
                         $results{"$label"} = "$url";
@@ -443,13 +442,7 @@ sub download_files_cosm {
             $url    = ( split /portal\//, $url )[1];
         }
 
-        if ( $portal =~ /mycocosm|fungi/i ) {
-
-            $filename = ( split /\//, $url )[4];
-        }
-        else {
-            $filename = ( split /\//, $url )[2];
-        }
+        $filename = ( split /\//, $url )[2];
 
         print "\tRetrieving: $filename\n";
 
