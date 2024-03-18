@@ -199,7 +199,7 @@ sub download_xml {
 
     # I can't get the XML parsing to work when "&quot;" exists in the file
     # let's cheat and remove it with sed
-    run_cmd( "sed -i \'s/&quot;//g\' $portal\_files.xml", "true" );
+    run_cmd( "sed -i.bak \'s/&quot;//g\' $portal\_files.xml && rm $portal\_files.bak", "true" );
 }
 
 #
