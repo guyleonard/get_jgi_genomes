@@ -4,7 +4,7 @@ Download files from the genomes contained within JGI's various -zomes and -cosms
 # Dependencies
 You will need to have two perl modules installed to use this script
  * XML::LibXML
- * List-MoreUtils
+ * List::MoreUtils
 
 You should be able to install these with 'cpanminus' on most *nix systems. Or you may consider using conda/mambe to create an environment with perl and the above modules.
 
