@@ -44,7 +44,9 @@ Other:
 As of writing (July 2020) the Phycocosm portal lists 77 genomes available, however not all of these seem to be available in the XML for that portal. Only about 37 of them are available, the others - mostly from archaeplastida - are available from Phytozome.
 
 ## Phytozome
-Currently versions 9 to 12 work with this script (point releases, e.g. 12.1, do not seem to work, so please use whole integers only). The newer, 'phytozome-next' or V13 is available at "https://phytozome-next.jgi.doe.gov/". Currently, I see no way of adding access this to the script. There is some form of limited CLI download, but it looks like you need to have an active connection in your browser to generate the download link, and you also have to select files via the clunky search interface (e.g. how do you select all predicted proteins only, it looks like you have to manually select them for each taxa).
+Currently versions 9 to 12 work with this script (point releases, e.g. 12.1, do not seem to work, so please use whole integers only).
+
+Currently, I see no way of adding access the newer 'phytozome-next' or V13 available [here](https://phytozome-next.jgi.doe.gov/). There is some limited CLI download, but it looks like you need to have an active connection in your browser to generate a download link, and you also have to select files via a clunky search interface (e.g. how do you select all predicted proteins only, it looks like you have to manually select them for each taxa). Please complain nicely and constructively to JGI.
 
 ## Metazome
 Metazome does not seem to be maintained, and occasionally has file download issues, generally it is very slow, but version '3' seems to download. It also looks like it is being ported to the new-style of interface that is available with phytozome-next.
