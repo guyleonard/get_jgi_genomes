@@ -6,7 +6,7 @@ You will need to have two perl modules installed to use this script
  * XML::LibXML
  * List::MoreUtils
 
-You should be able to install these with 'cpanminus' on most *nix systems. Or you may consider using conda/mambe to create an environment with perl and the above modules.
+You should be able to install these with 'cpanminus' on most *nix systems. Or you may consider using conda/mamba to create an environment with perl and the above modules.
 
 # Usage
 Login to JGI with your username and password (-u and -p) to generate the required 'cookie' file to allow your downloads to process. This will work for your current session only, and expires daily.
