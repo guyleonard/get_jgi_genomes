@@ -6,14 +6,30 @@ use Cwd;
 use File::Basename;
 use File::Path qw(make_path);
 use Getopt::Long qw(:config no_ignore_case);
-use List::MoreUtils qw(uniq);
 use open qw(:std :utf8);
 use utf8;
-use XML::LibXML;
-
-use Data::Dumper;
 
 our $VERSION = "0.1";
+
+# Early exit for help or version to avoid requiring optional modules
+if (grep { 
+        $_ eq '-h' || $_ eq '--help' 
+    } @ARGV) {
+    display_help();
+    exit 0;
+}
+if (grep { 
+        $_ eq '-v' || $_ eq '--version' 
+    } @ARGV) {
+    print "get_jgi_genomes Version: $VERSION\n";
+    exit 0;
+}
+
+eval {
+    require XML::LibXML;
+    XML::LibXML->import();
+    1;
+} or die "XML::LibXML module is required. Please install it.\n";
 
 #
 # Getops Variables
