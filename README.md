@@ -17,7 +17,7 @@ You can generate a list of all the available genomes with the '-l' option, this 
 
 ```
 Usage:
-  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-i) (-l) (-A) (-C) (-g) (-t) (-q)
+  get_jgi_genomes [-u <username> -p <password>] | [-c <cookies>] [-f | -a | -P 12 | -m 3] (-i) (-l) (-A) (-C) (-g) (-t) (-q) (-v)
 
 Required:
 	-u <username>
@@ -37,7 +37,10 @@ Portal File Options:
 JGI Taxa ID:
 	-i <id> JGI ID of Genome Project
 Other:
-	-l list only, no downloads
+        -l list only, no downloads
+        -q quiet output
+        -h show this help message
+        -v show version and exit
 ```
 # Notes
 ## Phycocosm
