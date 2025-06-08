@@ -302,6 +302,7 @@ sub parse_cosm_xml {
     if ( !-d $portal ) {
         make_path($portal);
     }
+    ensure_default_folders($portal);
 
     if ( $jgi_tax_id ne 'false' ) {
 
@@ -386,6 +387,7 @@ sub parse_zome_xml {
     if ( !-d $portal ) {
         make_path($portal);
     }
+    ensure_default_folders($portal);
 
     if ( $jgi_tax_id ne 'false' ) {
 
@@ -567,6 +569,16 @@ sub error {
 
 sub msg {
     print STDERR "@_\n";
+}
+
+# Ensure default subdirectories exist for a given portal
+sub ensure_default_folders {
+    my $path = shift;
+    my ($base) = split( '/', $path );
+    for my $dir (qw(fasta gff tab alleles)) {
+        my $folder = "$base/$dir";
+        make_path($folder) unless -d $folder;
+    }
 }
 
 sub HELP_MESSAGE {
