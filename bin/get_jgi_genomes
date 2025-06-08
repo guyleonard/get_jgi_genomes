@@ -163,7 +163,7 @@ sub check_cookie_valid {
     }
 
     if ( $logged_in eq 'true' ) {
-        print "INFO: Login Successfull!\n";
+        print "INFO: Login Successful!\n";
     }
     else {
         print
