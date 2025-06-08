@@ -24,6 +24,7 @@ my $jgi_tax_id = 'false';
 my $list       = 'false';
 my $quiet      = 'false';
 my ( $cds, $gff, $transcripts, $assembly );
+my $cookie_file = 'signon.cookie';
 
 #
 # Getopt
@@ -31,7 +32,7 @@ my ( $cds, $gff, $transcripts, $assembly );
 GetOptions(
     'user|u=s'      => \$username,
     'pass|p=s'      => \$password,
-    'cookies|c'     => \$cookies,
+    'cookies|c=s'   => \$cookies,
     'algae|a'       => \$algae,
     'fungi|f'       => \$fungi,
     'metazoa|m=s'   => \$metazoa,
@@ -47,6 +48,9 @@ GetOptions(
         sub { print "get_jgi_genomes Version: $VERSION\n"; exit(0) },
     'help|h' => sub { display_help() }
 );
+
+# Set cookie file path
+$cookie_file = $cookies if defined $cookies;
 
 # Signin Options / Cookies
 if ( $username && $password ) {
@@ -127,7 +131,7 @@ sub signin {
 
     print "INFO: Attempting to login...\n";
     run_cmd(
-        "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c signon.cookie > /dev/null",
+        "curl --silent 'https://signon.jgi.doe.gov/signon/create' --data-urlencode 'login=$user' --data-urlencode 'password=$pass' -c $cookie_file > /dev/null",
         "$quiet"
     );
 
@@ -136,7 +140,7 @@ sub signin {
 
 sub check_cookie_old {
 
-    if ( -A 'signon.cookie' > 1 || -M 'signon.cookie' > 1 ) {
+    if ( -A $cookie_file > 1 || -M $cookie_file > 1 ) {
         print
             "INFO: It has been longer than one day since your last login.\nINFO: Please use the -u and -p options.\n";
         exit(1);
@@ -148,8 +152,8 @@ sub check_cookie_old {
 
 sub check_cookie_valid {
     my $logged_in = 'false';
-    open my $cookie, '<', "signon.cookie"
-        or die "Cannot open signon.cookie file: $!\n";
+    open my $cookie, '<', $cookie_file
+        or die "Cannot open $cookie_file file: $!\n";
 
     while (<$cookie>) {
         my $line = $_;
@@ -192,7 +196,7 @@ sub download_xml {
         # Get portal List
         print "Downloading $portal XML - This may take a few minutes...\n";
         run_cmd(
-            "curl 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal' -b signon.cookie > $portal\_files.xml",
+            "curl 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal' -b $cookie_file > $portal\_files.xml",
             "$quiet"
         );
     }
@@ -472,7 +476,7 @@ sub download_single_taxa {
             print "\tRetrieving: $filename\n";
 
             run_cmd(
-                "curl --silent '$url' -b signon.cookie > $portal\/$filename",
+                "curl --silent '$url' -b $cookie_file > $portal\/$filename",
                 "$quiet"
             );
         }
@@ -507,7 +511,7 @@ sub download_files_cosm {
         print "\tRetrieving: $filename\n";
 
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov/portal/$url' -b signon.cookie > $portal\/$filename",
+            "curl --silent 'https://genome.jgi.doe.gov/portal/$url' -b $cookie_file > $portal\/$filename",
             "$quiet"
         );
     }
@@ -525,7 +529,7 @@ sub download_files_zome {
 
         print "\tRetrieving: $filename\n";
         run_cmd(
-            "curl --silent 'https://genome.jgi.doe.gov$url' -b signon.cookie > $portal\/$filename",
+            "curl --silent 'https://genome.jgi.doe.gov$url' -b $cookie_file > $portal\/$filename",
             "$quiet"
         );
     }
