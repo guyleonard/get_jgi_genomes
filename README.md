@@ -87,6 +87,9 @@ To download transcripts of 'Trire2' from Mycocosm after you have logged in:
 ./bin/get_jgi_genomes -c signon.cookie -f -i Trire2 -t
 ```
 
+## Tests
+Run `./tests/test_help.sh` to verify that the help command works as expected.
+
 # Other Genome Download Tools
  * [Get Ensembl Genomes](https://github.com/guyleonard/get_ensembl_genomes)
 
