@@ -168,6 +168,7 @@ sub check_cookie_old {
 
 sub check_cookie_valid {
     my $logged_in = 'false';
+    my $has_session = 'false';
     open my $cookie, '<', $cookie_file
         or die "Cannot open $cookie_file file: $!\n";
 
@@ -176,14 +177,17 @@ sub check_cookie_valid {
         if ( $line =~ m/TRUE/ ) {
             $logged_in = 'true';
         }
+        if ( $line =~ m/\tjgi_session\t/ ) {
+            $has_session = 'true';
+        }
     }
 
-    if ( $logged_in eq 'true' ) {
+    if ( $logged_in eq 'true' && $has_session eq 'true' ) {
         print "INFO: Login Successful!\n";
     }
     else {
         print
-            "WARN: There was a problem with your login attempt. Please Try again.\n";
+            "WARN: Login cookies are missing a jgi_session entry. Please Try again.\n";
         exit(1);
     }
 }
@@ -212,14 +216,39 @@ sub download_xml {
         # Get portal List
         print "Downloading $portal XML - This may take a few minutes...\n";
         run_cmd(
-            "curl 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal' -b $cookie_file > $portal\_files.xml",
+            "curl --silent -L 'https://genome.jgi.doe.gov/portal/ext-api/downloads/get-directory?organism=$portal\&' -b $cookie_file > $portal\_files.xml",
             "$quiet"
         );
+        validate_xml_response("$portal\_files.xml");
     }
 
     # I can't get the XML parsing to work when "&quot;" exists in the file
     # let's cheat and remove it with sed
     run_cmd( "sed -i.bak \'s/&quot;//g\' $portal\_files.xml && rm $portal\_files.xml.bak", "true" );
+}
+
+sub validate_xml_response {
+    my $xml_file = shift;
+
+    if ( -z $xml_file ) {
+        print "WARN: The $xml_file file is empty. Please re-login with -u and -p.\n";
+        exit(1);
+    }
+
+    open my $fh, '<', $xml_file or die "Cannot open $xml_file file: $!\n";
+    while ( my $line = <$fh> ) {
+        if ( $line =~ m/Anonymous downloads are no longer supported/i
+            || $line =~ m/accessDenied/i
+            || $line =~ m/<title>/i
+            || $line =~ m/<html/i )
+        {
+            print
+                "WARN: The $xml_file response looks like HTML (not XML). Please re-login with -u and -p.\n";
+            close($fh);
+            exit(1);
+        }
+    }
+    close($fh);
 }
 
 #
