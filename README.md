@@ -1,3 +1,5 @@
+This project is now sadly dead. JGI has changed their accessibility, and they now have the weirdest and most unhelpful download portal I have ever had the misfortune of using. Requesting a download now takes multiple dead minutes if not hours of waiting in browser for multiple species/larger datasets. Practically unusable. Maybe I have missed something, but I have also not got time to look in to it anymore. Sorry folks. Thanks for using the tool over the years and all who supported it too.
+
 # Get JGI Genomes!
 Download files from the genomes contained within JGI's various -zomes and -cosms.
 
